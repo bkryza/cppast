@@ -501,7 +501,7 @@ CXCursor get_instantiation_template(const CXCursor& cur, const CXType& type,
     }
 }
 
-std::unique_ptr<cpp_type> try_parse_instantiation_type(const detail::parse_context&,
+std::unique_ptr<cpp_type> try_parse_instantiation_type(const detail::parse_context& context,
                                                        const CXCursor& cur, const CXType& type)
 {
     return make_leave_type(cur, type, [&](std::string&& spelling) -> std::unique_ptr<cpp_type> {
@@ -521,15 +521,53 @@ std::unique_ptr<cpp_type> try_parse_instantiation_type(const detail::parse_conte
         cpp_template_instantiation_type::builder builder(
             cpp_template_ref(detail::get_entity_id(templ), std::move(templ_name)));
 
-        // parse arguments
-        // i.e. not parse really, just add the string
-        if (spelling.empty() || spelling.back() != '>')
-            return nullptr;
-        spelling.pop_back();
-        while (!spelling.empty() && spelling.back() == ' ')
-            spelling.pop_back();
-        builder.add_unexposed_arguments(ptr);
+        auto count = (unsigned int)clang_Type_getNumTemplateArguments(type);
+        if (count > 0)
+        {
+            for (auto i = 0U; i < count; i++)
+            {
+                auto cxtype = clang_Type_getTemplateArgumentAsType(type, i);
 
+                auto t = parse_type_impl(context, templ, cxtype);
+
+                if (t.get() == nullptr
+                    || (t->kind() == cpp_type_kind::unexposed_t
+                        && static_cast<const cpp_unexposed_type&>(*t).name().empty()))
+                {
+                    // Treat the type as unexposed
+                    if (spelling.empty() || spelling.back() != '>')
+                        return nullptr;
+                    spelling.pop_back();
+                    while (!spelling.empty() && spelling.back() == ' ')
+                        spelling.pop_back();
+
+                    // Get i'th argument as string
+                    std::istringstream       ss(spelling);
+                    std::string              token;
+                    std::vector<std::string> toks;
+
+                    while (std::getline(ss, token, ','))
+                    {
+                        toks.push_back(token);
+                    }
+                    auto s = toks[i];
+                    builder.add_argument(cpp_unexposed_type::build(s));
+                }
+                else
+                    builder.add_argument(std::move(t));
+            }
+        }
+        else
+        {
+            // parse arguments
+            // i.e. not parse really, just add the string
+            if (spelling.empty() || spelling.back() != '>')
+                return nullptr;
+            spelling.pop_back();
+            while (!spelling.empty() && spelling.back() == ' ')
+                spelling.pop_back();
+            builder.add_unexposed_arguments(ptr);
+        }
         return builder.finish();
     });
 }
@@ -586,6 +624,8 @@ std::unique_ptr<cpp_type> parse_type_impl(const detail::parse_context& context, 
         else if (auto ptype = try_parse_template_parameter_type(context, cur, type))
             // template parameter type is unexposed
             return ptype;
+        // else
+        // return cpp_unexposed_type::build(get_type_spelling(cur, type));
     // fallthrough
     case CXType_Complex:
         return cpp_unexposed_type::build(get_type_spelling(cur, type));
