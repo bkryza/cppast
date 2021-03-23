@@ -713,7 +713,7 @@ std::unique_ptr<cpp_type> parse_type_impl(const detail::parse_context& context, 
         return cpp_pointer_type::build(parse_member_pointee_type(context, cur, type));
 
     case CXType_Auto:
-        return make_leave_type(cur, type, [&](std::string&&) { return cpp_auto_type::build(); });
+        return parse_type_impl(context, cur, clang_getCanonicalType(type));
     }
 }
 } // namespace
