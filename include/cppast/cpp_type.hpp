@@ -74,6 +74,19 @@ public:
         user_data_ = data;
     }
 
+    const cpp_type& canonical() const noexcept
+    {
+        if(canonical_)
+            return *canonical_;
+
+        return *this;
+    }
+
+    void set_canonical(std::unique_ptr<cpp_type>&& canonical)
+    {
+        canonical_ = std::move(canonical);
+    }
+
 protected:
     cpp_type() noexcept : user_data_(nullptr) {}
 
@@ -88,6 +101,8 @@ private:
     template <typename T>
     friend struct detail::intrusive_list_access;
     friend detail::intrusive_list_node<cpp_type>;
+
+    std::unique_ptr<cpp_type> canonical_;
 };
 
 /// An unexposed [cppast::cpp_type]().

@@ -722,7 +722,10 @@ std::unique_ptr<cpp_type> detail::parse_type(const detail::parse_context& contex
                                              const CXCursor& cur, const CXType& type)
 {
     auto result = parse_type_impl(context, cur, type);
+
     DEBUG_ASSERT(result != nullptr, detail::parse_error_handler{}, type, "invalid type");
+
+    result->set_canonical(parse_type_impl(context, cur, clang_getCanonicalType(type)));
     return result;
 }
 
