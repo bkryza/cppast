@@ -131,6 +131,12 @@ inline bool operator!=(const cpp_token_string& lhs, const cpp_token_string& rhs)
 {
     return !(lhs == rhs);
 }
+
+std::string ltrim(const std::string &s);
+
+std::string rtrim(const std::string &s);
+
+std::string trim(const std::string &s);
 } // namespace cppast
 
 #endif // CPPAST_CPP_TOKEN_HPP_INCLUDED

@@ -568,6 +568,7 @@ type_safe::optional<cpp_token> punctuation_token(const char*& ptr)
 
     return type_safe::nullopt;
 }
+
 } // namespace
 
 cpp_token_string cpp_token_string::tokenize(std::string str)
@@ -604,6 +605,7 @@ bool is_identifier(char c)
 {
     return std::isalnum(c) || c == '_';
 }
+
 } // namespace
 
 std::string cpp_token_string::as_string() const
@@ -625,3 +627,22 @@ bool cppast::operator==(const cpp_token_string& lhs, const cpp_token_string& rhs
         return false;
     return std::equal(lhs.tokens_.begin(), lhs.tokens_.end(), rhs.tokens_.begin());
 }
+
+namespace {
+const std::string WHITESPACE = " \n\r\t\f\v";
+} // namespace
+
+std::string cppast::ltrim(const std::string &s)
+{
+    size_t start = s.find_first_not_of(WHITESPACE);
+    return (start == std::string::npos) ? "" : s.substr(start);
+}
+
+std::string cppast::rtrim(const std::string &s)
+{
+    size_t end = s.find_last_not_of(WHITESPACE);
+    return (end == std::string::npos) ? "" : s.substr(0, end + 1);
+}
+
+std::string cppast::trim(const std::string &s) { return rtrim(ltrim(s)); }
+

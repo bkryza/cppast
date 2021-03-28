@@ -4,6 +4,7 @@
 #include "parse_functions.hpp"
 
 #include <cctype>
+#include <cassert>
 
 #include <cppast/cpp_array_type.hpp>
 #include <cppast/cpp_decltype_type.hpp>
@@ -242,6 +243,7 @@ std::unique_ptr<cpp_type> make_leave_type(const CXCursor& cur, const CXType& typ
     remove_prefix(spelling, "union", true);
 
     auto entity = b(std::move(spelling));
+
     if (!entity)
         return nullptr;
     return make_cv_qualified(std::move(entity), cv);
@@ -505,6 +507,8 @@ std::unique_ptr<cpp_type> try_parse_instantiation_type(const detail::parse_conte
                                                        const CXCursor& cur, const CXType& type)
 {
     return make_leave_type(cur, type, [&](std::string&& spelling) -> std::unique_ptr<cpp_type> {
+        auto count = 0U;
+        std::string sp = spelling;
         auto ptr = spelling.c_str();
 
         std::string templ_name;
@@ -518,14 +522,55 @@ std::unique_ptr<cpp_type> try_parse_instantiation_type(const detail::parse_conte
         if (clang_Cursor_isNull(templ))
             return nullptr;
 
+        auto entity_id = detail::get_entity_id(templ);
         cpp_template_instantiation_type::builder builder(
-            cpp_template_ref(detail::get_entity_id(templ), std::move(templ_name)));
+            cpp_template_ref(entity_id, templ_name));
 
-        auto count = (unsigned int)clang_Type_getNumTemplateArguments(type);
+        count = (unsigned int)clang_Type_getNumTemplateArguments(type);
         if (count > 0)
         {
+            // Extract template tokens as strings from spelling
+            spelling.pop_back();
+            std::string ss(spelling.substr(templ_name.size()+1));
+            std::string              token;
+            std::vector<std::string> toks;
+            std::string sss;
+
+            int nested_template = 0;
+            for(const char &c : ss) {
+                sss += c;
+                if(c == '<') {
+                    nested_template++;
+                    token += c;
+                }
+                else if(c == '>') {
+                    nested_template--;
+                    token += c;
+                }
+                else {
+                    if(nested_template > 0) {
+                        token += c;
+                    }
+                    else {
+                        if(c == ',') {
+                           toks.push_back(trim(token));
+                           token = "";
+                        }
+                        else {
+                            token += c;
+                        }
+                    }
+                }
+            }
+
+            if(token.size() > 0)
+                toks.push_back(trim(token));
+
+            assert(toks.size() == count);
+
             for (auto i = 0U; i < count; i++)
             {
+
                 auto cxtype = clang_Type_getTemplateArgumentAsType(type, i);
 
                 auto t = parse_type_impl(context, templ, cxtype);
@@ -534,24 +579,17 @@ std::unique_ptr<cpp_type> try_parse_instantiation_type(const detail::parse_conte
                     || (t->kind() == cpp_type_kind::unexposed_t
                         && static_cast<const cpp_unexposed_type&>(*t).name().empty()))
                 {
-                    // Treat the type as unexposed
-                    if (spelling.empty() || spelling.back() != '>')
-                        return nullptr;
-                    spelling.pop_back();
-                    while (!spelling.empty() && spelling.back() == ' ')
-                        spelling.pop_back();
-
-                    // Get i'th argument as string
-                    std::istringstream       ss(spelling);
-                    std::string              token;
-                    std::vector<std::string> toks;
-
-                    while (std::getline(ss, token, ','))
-                    {
-                        toks.push_back(token);
+                   std::string s = toks[i];
+                    try {
+                        std::stoi(s);
+                        auto unt = cpp_literal_expression::build(cpp_unexposed_type::build(s), s);
+                        builder.add_argument(std::move(unt));
                     }
-                    auto s = toks[i];
-                    builder.add_argument(cpp_unexposed_type::build(s));
+                    catch(std::invalid_argument &e) {
+                        auto unt = cpp_unexposed_expression::build(cpp_unexposed_type::build(s),
+                                                                cpp_token_string::tokenize(s));
+                        builder.add_argument(std::move(unt));
+                    }
                 }
                 else
                     builder.add_argument(std::move(t));
