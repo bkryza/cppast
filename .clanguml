@@ -1,0 +1,19 @@
+compilation_database_dir: build
+output_directory: puml
+diagrams:
+  cppast_type_hierarchy:
+    type: class
+    glob:
+      - include/cppast/cpp_type.hpp
+    using_namespace:
+      - cppast
+    include:
+      namespaces:
+        - cppast
+      relationships:
+        - inheritance
+    exclude:
+      namespaces:
+        - "cppast::detail"
+      entity_types:
+        - enums

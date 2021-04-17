@@ -530,7 +530,7 @@ std::unique_ptr<cpp_type> try_parse_instantiation_type(const detail::parse_conte
             if(token.size() > 0)
                 toks.push_back(trim(token));
 
-            assert(toks.size() == count);
+            //assert(toks.size() == count);
 
             for (auto i = 0U; i < count; i++)
             {
