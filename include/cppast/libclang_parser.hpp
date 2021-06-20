@@ -232,6 +232,7 @@ void parse_files(FileParser& parser, Range&& file_names,
                   "must use the libclang parser");
     parse_files(parser, std::forward<Range>(file_names), [&](const std::string& file) {
         auto config = find_config_for(database, file);
+        config.value().remove_comments_in_macro(true);
         if (!config)
             throw libclang_error("unable to find configuration for file '" + file + "'");
         return config.value();
