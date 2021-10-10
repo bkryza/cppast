@@ -13,10 +13,12 @@
 
 namespace cppast
 {
+class cpp_member_function;
 /// The kind of a [cppast::cpp_expression]().
 enum class cpp_expression_kind
 {
     literal_t,
+    member_function_call_t,
 
     unexposed_t,
 };
@@ -138,6 +140,52 @@ private:
     }
 
     std::string value_;
+};
+
+/// A [cppast::cpp_expression]() that is a member function call.
+class cpp_member_function_call final : public cpp_expression
+{
+public:
+    /// \returns A newly created member function call.
+    static std::unique_ptr<cpp_member_function_call> build(
+        std::unique_ptr<cpp_type> type, type_safe::optional_ref<const cpp_entity> caller,
+        type_safe::optional_ref<const cpp_entity> callee, std::string member_function);
+
+    type_safe::optional_ref<const cpp_entity> get_caller() const
+    {
+        return caller_;
+    }
+
+    type_safe::optional_ref<const cpp_entity> get_callee() const
+    {
+        return callee_;
+    }
+
+    std::string get_member_function() const
+    {
+        return member_function_;
+    }
+
+private:
+    cpp_member_function_call(std::unique_ptr<cpp_type>                 type,
+                             type_safe::optional_ref<const cpp_entity> caller,
+                             type_safe::optional_ref<const cpp_entity> callee,
+                             std::string member_function);
+
+    cpp_expression_kind do_get_kind() const noexcept override
+    {
+        return cpp_expression_kind::member_function_call_t;
+    }
+
+    /// Reference to the scope where the call is made from
+    /// e.g. cpp_function or cpp_member_function
+    type_safe::optional_ref<const cpp_entity> caller_;
+
+    /// Reference to the target (e.g. cpp_class)
+    type_safe::optional_ref<const cpp_entity> callee_;
+
+    /// Reference to the member function
+    std::string member_function_;
 };
 
 /// \exclude

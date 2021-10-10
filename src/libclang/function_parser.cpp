@@ -2,6 +2,7 @@
 // This file is subject to the license terms in the LICENSE file
 // found in the top-level directory of this distribution.
 
+#include <cppast/cpp_expression.hpp>
 #include <cppast/cpp_function.hpp>
 #include <cppast/cpp_member_function.hpp>
 
@@ -92,6 +93,48 @@ void add_parameters(const detail::parse_context& context, Builder& builder, cons
                                      severity::error});
             }
     }
+}
+
+std::unique_ptr<cpp_expression> parse_function_call(const detail::parse_context& context,
+                                                    const CXCursor&              cur)
+{
+    return detail::parse_expression(context, cur);
+}
+
+template <class Builder>
+void add_function_calls(const detail::parse_context& context, Builder& builder, const CXCursor& cur)
+{
+    auto kind = clang_getCursorKind(cur);
+    DEBUG_ASSERT(kind == CXCursor_FunctionDecl || kind == CXCursor_CXXMethod,
+                 detail::assert_handler{});
+
+    detail::visit_children(
+        cur,
+        [&](const CXCursor& child) {
+            if (clang_getCursorKind(child) != CXCursor_CallExpr)
+                return;
+
+            try
+            {
+                auto function_call = parse_function_call(context, child);
+                if (function_call)
+                    builder.add_function_call(std::move(function_call));
+            }
+            catch (detail::parse_error& ex)
+            {
+                context.error = true;
+                context.logger->log("libclang parser", ex.get_diagnostic(context.file));
+            }
+            catch (std::logic_error& ex)
+            {
+                context.error = true;
+                context.logger->log("libclang parser",
+                                    diagnostic{ex.what(),
+                                               detail::make_location(context.file, child),
+                                               severity::error});
+            }
+        },
+        true);
 }
 
 bool is_templated_cursor(const CXCursor& cur)
@@ -552,6 +595,8 @@ std::unique_ptr<cpp_entity> parse_cpp_function_impl(const detail::parse_context&
     if (suffix.noexcept_condition)
         builder.noexcept_condition(std::move(suffix.noexcept_condition));
 
+    add_function_calls(context, builder, cur);
+
     if (is_templated_cursor(cur))
         return builder.finish(detail::get_entity_id(cur), suffix.body_kind,
                               parse_scope(cur, is_friend));
@@ -689,6 +734,9 @@ std::unique_ptr<cpp_entity> detail::parse_cpp_member_function(const detail::pars
                                                             clang_getCursorResultType(cur)));
     context.comments.match(builder.get(), cur);
     builder.get().add_attribute(prefix.attributes);
+
+    context.current_function = type_safe::ref(builder.get());
+
     add_parameters(context, builder, cur);
     if (clang_Cursor_isVariadic(cur))
         builder.is_variadic();
@@ -699,6 +747,9 @@ std::unique_ptr<cpp_entity> detail::parse_cpp_member_function(const detail::pars
         builder.is_consteval();
 
     skip_parameters(stream);
+
+    add_function_calls(context, builder, cur);
+
     return handle_suffix(context, cur, builder, stream, prefix.is_virtual,
                          parse_scope(cur, is_friend));
 }
