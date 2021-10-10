@@ -19,11 +19,31 @@ std::unique_ptr<cpp_expression> detail::parse_expression(const detail::parse_con
 
     auto type = parse_type(context, cur, clang_getCursorType(cur));
     auto expr = to_string(stream, stream.end());
-    if (kind == CXCursor_CallExpr && (expr.empty() || expr.back().spelling != ")"))
+    if (kind == CXCursor_CallExpr)
     {
-        // we have a call expression that doesn't end in a closing parentheses
-        // this means default constructor, don't parse it at all
-        // so, for example a variable doesn't have a default value
+        if (expr.empty() || expr.back().spelling != ")")
+        {
+            // we have a call expression that doesn't end in a closing parentheses
+            // this means default constructor, don't parse it at all
+            // so, for example a variable doesn't have a default value
+            return nullptr;
+        }
+
+        auto referenced      = clang_getCursorReferenced(cur);
+        auto referenced_kind = clang_getCursorKind(referenced);
+        if (referenced_kind == CXCursor_CXXMethod)
+        {
+            type_safe::optional_ref<const cpp_entity> callee = context.idx->lookup_definition(
+                detail::get_entity_id(clang_getCursorSemanticParent(referenced)));
+
+            type_safe::optional_ref<const cpp_entity> caller = context.current_class;
+
+            auto message = clang_getCString(clang_getCursorSpelling(cur));
+
+            return cpp_member_function_call::build(std::move(type), std::move(caller),
+                                                   std::move(callee), std::move(message));
+        }
+
         return nullptr;
     }
     else if (kind == CXCursor_CharacterLiteral || kind == CXCursor_CompoundLiteralExpr

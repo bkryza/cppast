@@ -3,9 +3,30 @@
 // found in the top-level directory of this distribution.
 
 #include <cppast/cpp_expression.hpp>
+#include <cppast/cpp_member_function.hpp>
 
 using namespace cppast;
 
+namespace cppast
+{
+cpp_member_function_call::cpp_member_function_call(std::unique_ptr<cpp_type>                 type,
+                                                   type_safe::optional_ref<const cpp_entity> caller,
+                                                   type_safe::optional_ref<const cpp_entity> callee,
+                                                   std::string member_function)
+: cpp_expression(std::move(type)), caller_(std::move(caller)), callee_(std::move(callee)),
+  member_function_(std::move(member_function))
+{}
+
+std::unique_ptr<cpp_member_function_call> cpp_member_function_call::build(
+    std::unique_ptr<cpp_type> type, type_safe::optional_ref<const cpp_entity> caller,
+    type_safe::optional_ref<const cpp_entity> callee, std::string member_function)
+{
+    return std::unique_ptr<cpp_member_function_call>(
+        new cpp_member_function_call(std::move(type), std::move(caller), std::move(callee),
+                                     std::move(member_function)));
+}
+
+} // namespace cppast
 namespace
 {
 void write_literal(code_generator::output& output, const cpp_literal_expression& expr)
@@ -77,6 +98,14 @@ void write_unexposed(code_generator::output& output, const cpp_unexposed_express
 {
     detail::write_token_string(output, expr.expression());
 }
+
+void write_member_function_call(code_generator::output&         output,
+                                const cpp_member_function_call& expr)
+{
+    // detail::write_token_string(output, expr.expression());
+    (void)output;
+    (void)expr;
+}
 } // namespace
 
 void detail::write_expression(code_generator::output& output, const cpp_expression& expr)
@@ -88,6 +117,9 @@ void detail::write_expression(code_generator::output& output, const cpp_expressi
         break;
     case cpp_expression_kind::unexposed_t:
         write_unexposed(output, static_cast<const cpp_unexposed_expression&>(expr));
+        break;
+    case cpp_expression_kind::member_function_call_t:
+        write_member_function_call(output, static_cast<const cpp_member_function_call&>(expr));
         break;
     }
 }

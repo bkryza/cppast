@@ -13,6 +13,8 @@
 
 namespace cppast
 {
+class cpp_member_function_call;
+
 /// A [cppast::cpp_entity]() modelling a function parameter.
 class cpp_function_parameter final : public cpp_entity, public cpp_variable_base
 {
@@ -76,6 +78,13 @@ public:
         return type_safe::ref(parameters_);
     }
 
+    /// \returns An iteratable object iterating over the [cppast::cpp_member_function_call]()
+    /// entities.
+    const std::vector<std::unique_ptr<cpp_expression>>& function_calls() const noexcept
+    {
+        return function_calls_;
+    }
+
     /// \returns The [cppast::cpp_function_body_kind]().
     /// \notes This matches the [cppast::cpp_forward_declarable]() queries.
     cpp_function_body_kind body_kind() const noexcept
@@ -122,6 +131,12 @@ protected:
         {
             static_cast<cpp_function_base&>(*function).parameters_.push_back(*function,
                                                                              std::move(parameter));
+        }
+
+        /// \effects Adds a parameter.
+        void add_function_call(std::unique_ptr<cpp_expression> call)
+        {
+            static_cast<cpp_function_base&>(*function).function_calls_.push_back(std::move(call));
         }
 
         /// \effects Marks the function as variadic.
@@ -193,6 +208,7 @@ private:
     std::unique_ptr<cpp_expression>                noexcept_expr_;
     cpp_function_body_kind                         body_;
     bool                                           variadic_;
+    std::vector<std::unique_ptr<cpp_expression>>   function_calls_;
 };
 
 /// A [cppast::cpp_entity]() modelling a C++ function.
