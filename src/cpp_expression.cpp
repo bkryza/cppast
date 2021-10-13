@@ -12,18 +12,23 @@ namespace cppast
 cpp_member_function_call::cpp_member_function_call(std::unique_ptr<cpp_type>                 type,
                                                    type_safe::optional_ref<const cpp_entity> caller,
                                                    type_safe::optional_ref<const cpp_entity> callee,
-                                                   std::string member_function)
+                                                   std::string member_function,
+                                                   std::string caller_id, std::string callee_id,
+                                                   cpp_entity_id callee_entity_id)
 : cpp_expression(std::move(type)), caller_(std::move(caller)), callee_(std::move(callee)),
-  member_function_(std::move(member_function))
+  member_function_(std::move(member_function)), caller_id_(std::move(caller_id)),
+  callee_id_(std::move(callee_id)), callee_entity_id_(std::move(callee_entity_id))
 {}
 
 std::unique_ptr<cpp_member_function_call> cpp_member_function_call::build(
     std::unique_ptr<cpp_type> type, type_safe::optional_ref<const cpp_entity> caller,
-    type_safe::optional_ref<const cpp_entity> callee, std::string member_function)
+    type_safe::optional_ref<const cpp_entity> callee, std::string member_function,
+    std::string caller_id, std::string callee_id, cpp_entity_id callee_entity_id)
 {
     return std::unique_ptr<cpp_member_function_call>(
         new cpp_member_function_call(std::move(type), std::move(caller), std::move(callee),
-                                     std::move(member_function)));
+                                     std::move(member_function), std::move(caller_id),
+                                     std::move(callee_id), std::move(callee_entity_id)));
 }
 
 } // namespace cppast

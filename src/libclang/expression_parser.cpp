@@ -36,12 +36,31 @@ std::unique_ptr<cpp_expression> detail::parse_expression(const detail::parse_con
             type_safe::optional_ref<const cpp_entity> callee = context.idx->lookup_definition(
                 detail::get_entity_id(clang_getCursorSemanticParent(referenced)));
 
-            type_safe::optional_ref<const cpp_entity> caller = context.current_class;
+            // if(!callee.has_value()) {
+            // TODO: Check if this is the only case when the callee is not yet
+            // known
+            // callee = context.current_class;
+            //}
+
+            type_safe::optional_ref<const cpp_entity> caller;
+
+            if (context.current_class.has_value())
+            {
+                caller = context.current_class;
+            }
+            else
+            {
+                caller = context.current_function;
+            }
 
             auto message = clang_getCString(clang_getCursorSpelling(cur));
 
             return cpp_member_function_call::build(std::move(type), std::move(caller),
-                                                   std::move(callee), std::move(message));
+                                                   std::move(callee), std::move(message),
+                                                   context.current_function_id,
+                                                   clang_getCString(clang_getCursorUSR(referenced)),
+                                                   detail::get_entity_id(
+                                                       clang_getCursorSemanticParent(referenced)));
         }
 
         return nullptr;

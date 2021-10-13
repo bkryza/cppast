@@ -50,14 +50,15 @@ namespace detail
 
     struct parse_context
     {
-        CXTranslationUnit                              tu;
-        CXFile                                         file;
-        type_safe::object_ref<const diagnostic_logger> logger;
-        type_safe::object_ref<const cpp_entity_index>  idx;
-        comment_context                                comments;
-        mutable bool                                   error;
-        mutable type_safe::optional_ref<const cpp_entity>            current_function{};
-        mutable type_safe::optional_ref<const cpp_entity>            current_class{};
+        CXTranslationUnit                                 tu;
+        CXFile                                            file;
+        type_safe::object_ref<const diagnostic_logger>    logger;
+        type_safe::object_ref<const cpp_entity_index>     idx;
+        comment_context                                   comments;
+        mutable bool                                      error;
+        mutable type_safe::optional_ref<const cpp_entity> current_function{};
+        mutable type_safe::optional_ref<const cpp_entity> current_class{};
+        mutable std::string                               current_function_id{};
     };
 
     // parse default value of variable, function parameter...
