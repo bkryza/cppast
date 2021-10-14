@@ -147,72 +147,47 @@ class cpp_member_function_call final : public cpp_expression
 {
 public:
     /// \returns A newly created member function call.
-    static std::unique_ptr<cpp_member_function_call> build(
-        std::unique_ptr<cpp_type> type, type_safe::optional_ref<const cpp_entity> caller,
-        type_safe::optional_ref<const cpp_entity> callee, std::string member_function,
-        std::string caller_id, std::string callee_id, cpp_entity_id callee_entity_id);
+    static std::unique_ptr<cpp_member_function_call> build(std::unique_ptr<cpp_type> type,
+                                                           cpp_entity_id             caller_id,
+                                                           cpp_entity_id caller_method_id,
+                                                           cpp_entity_id callee_id,
+                                                           cpp_entity_id callee_method_id);
 
-    type_safe::optional_ref<const cpp_entity> get_caller() const
-    {
-        return caller_;
-    }
-
-    type_safe::optional_ref<const cpp_entity> get_callee() const
-    {
-        return callee_;
-    }
-
-    std::string get_member_function() const
-    {
-        return member_function_;
-    }
-
-    std::string get_caller_id() const
+    cpp_entity_id get_caller_id() const
     {
         return caller_id_;
     }
 
-    std::string get_callee_id() const
+    cpp_entity_id get_callee_id() const
     {
         return callee_id_;
     }
 
-    void update(const cppast::cpp_entity_index& idx) const
+    cpp_entity_id get_caller_method_id() const
     {
-        callee_ = idx.lookup_definition(callee_entity_id_);
+        return caller_method_id_;
+    }
+
+    cpp_entity_id get_callee_method_id() const
+    {
+        return callee_method_id_;
     }
 
 private:
-    cpp_member_function_call(std::unique_ptr<cpp_type>                 type,
-                             type_safe::optional_ref<const cpp_entity> caller,
-                             type_safe::optional_ref<const cpp_entity> callee,
-                             std::string member_function, std::string caller_id,
-                             std::string callee_id, cpp_entity_id callee_entity_id);
+    cpp_member_function_call(std::unique_ptr<cpp_type> type, cpp_entity_id caller_id,
+                             cpp_entity_id caller_method_id, cpp_entity_id callee_id,
+                             cpp_entity_id callee_method_id);
 
     cpp_expression_kind do_get_kind() const noexcept override
     {
         return cpp_expression_kind::member_function_call_t;
     }
 
-    /// Reference to the scope where the call is made from
-    /// e.g. cpp_function or cpp_member_function
-    type_safe::optional_ref<const cpp_entity> caller_;
+    cpp_entity_id caller_id_;
+    cpp_entity_id caller_method_id_;
 
-    /// Reference to the target (e.g. cpp_class)
-    mutable type_safe::optional_ref<const cpp_entity> callee_;
-
-    /// Reference to the member function
-    std::string member_function_;
-
-    /// Reference to caller id
-    std::string caller_id_;
-
-    /// Reference to callee id
-    std::string callee_id_;
-
-    cpp_entity_id callee_entity_id_;
-
-    cpp_entity_id caller_entity_id_;
+    cpp_entity_id callee_id_;
+    cpp_entity_id callee_method_id_;
 };
 
 /// \exclude

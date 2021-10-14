@@ -33,34 +33,19 @@ std::unique_ptr<cpp_expression> detail::parse_expression(const detail::parse_con
         auto referenced_kind = clang_getCursorKind(referenced);
         if (referenced_kind == CXCursor_CXXMethod)
         {
-            type_safe::optional_ref<const cpp_entity> callee = context.idx->lookup_definition(
-                detail::get_entity_id(clang_getCursorSemanticParent(referenced)));
-
-            // if(!callee.has_value()) {
-            // TODO: Check if this is the only case when the callee is not yet
-            // known
-            // callee = context.current_class;
-            //}
-
-            type_safe::optional_ref<const cpp_entity> caller;
+            cpp_entity_id caller        = *context.current_function;
+            cpp_entity_id caller_method = *context.current_function;
+            cpp_entity_id callee = detail::get_entity_id(clang_getCursorSemanticParent(referenced));
+            cpp_entity_id callee_method = detail::get_entity_id(referenced);
 
             if (context.current_class.has_value())
             {
-                caller = context.current_class;
+                caller = *context.current_class;
             }
-            else
-            {
-                caller = context.current_function;
-            }
-
-            auto message = clang_getCString(clang_getCursorSpelling(cur));
 
             return cpp_member_function_call::build(std::move(type), std::move(caller),
-                                                   std::move(callee), std::move(message),
-                                                   context.current_function_id,
-                                                   clang_getCString(clang_getCursorUSR(referenced)),
-                                                   detail::get_entity_id(
-                                                       clang_getCursorSemanticParent(referenced)));
+                                                   std::move(caller_method), std::move(callee),
+                                                   std::move(callee_method));
         }
 
         return nullptr;

@@ -149,7 +149,7 @@ std::unique_ptr<cpp_entity> detail::parse_cpp_class(const detail::parse_context&
         }
 
         context.comments.match(builder.get(), cur);
-        context.current_class = type_safe::ref(builder.get());
+        context.current_class = detail::get_entity_id(cur);
         detail::visit_children(cur, [&](const CXCursor& child) {
             auto kind = clang_getCursorKind(child);
             if (kind == CXCursor_CXXAccessSpecifier)
@@ -169,7 +169,7 @@ std::unique_ptr<cpp_entity> detail::parse_cpp_class(const detail::parse_context&
             else if (auto entity = parse_entity(context, &builder.get(), child))
                 builder.add_child(std::move(entity));
         });
-        context.current_class = nullptr;
+        context.current_class.reset();
     }
 
     if (!is_friend && clang_isCursorDefinition(cur))

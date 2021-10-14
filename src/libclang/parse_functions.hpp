@@ -56,9 +56,9 @@ namespace detail
         type_safe::object_ref<const cpp_entity_index>     idx;
         comment_context                                   comments;
         mutable bool                                      error;
-        mutable type_safe::optional_ref<const cpp_entity> current_function{};
-        mutable type_safe::optional_ref<const cpp_entity> current_class{};
-        mutable std::string                               current_function_id{};
+        mutable std::optional<cpp_entity_id> current_function{};
+        mutable std::optional<cpp_entity_id> current_class{};
+        mutable std::string                               current_function_usr{};
     };
 
     // parse default value of variable, function parameter...

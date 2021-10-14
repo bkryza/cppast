@@ -587,13 +587,13 @@ std::unique_ptr<cpp_entity> parse_cpp_function_impl(const detail::parse_context&
     if (suffix.noexcept_condition)
         builder.noexcept_condition(std::move(suffix.noexcept_condition));
 
-    context.current_function = type_safe::ref(builder.get());
-    context.current_function_id = clang_getCString(clang_getCursorUSR(cur));
+    context.current_function = detail::get_entity_id(cur);
+    context.current_function_usr = clang_getCString(clang_getCursorUSR(cur));
 
     add_function_calls(context, builder, cur);
 
-    context.current_function = nullptr;
-    context.current_function_id = "";
+    context.current_function.reset();
+    context.current_function_usr = "";
 
     if (is_templated_cursor(cur))
         return builder.finish(detail::get_entity_id(cur), suffix.body_kind,
@@ -733,8 +733,8 @@ std::unique_ptr<cpp_entity> detail::parse_cpp_member_function(const detail::pars
     context.comments.match(builder.get(), cur);
     builder.get().add_attribute(prefix.attributes);
 
-    context.current_function = type_safe::ref(builder.get());
-    context.current_function_id = clang_getCString(clang_getCursorUSR(cur));
+    context.current_function = detail::get_entity_id(cur);
+    context.current_function_usr = clang_getCString(clang_getCursorUSR(cur));
 
     add_parameters(context, builder, cur);
     if (clang_Cursor_isVariadic(cur))
@@ -747,8 +747,8 @@ std::unique_ptr<cpp_entity> detail::parse_cpp_member_function(const detail::pars
 
     add_function_calls(context, builder, cur);
 
-    context.current_function = nullptr;
-    context.current_function_id = "";
+    context.current_function.reset();
+    context.current_function_usr = "";
 
     return handle_suffix(context, cur, builder, stream, prefix.is_virtual,
                          parse_scope(cur, is_friend));
