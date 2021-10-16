@@ -47,6 +47,22 @@ std::unique_ptr<cpp_expression> detail::parse_expression(const detail::parse_con
                                                    std::move(caller_method), std::move(callee),
                                                    std::move(callee_method));
         }
+        else if(referenced_kind == CXCursor_FunctionDecl)
+        {
+            cpp_entity_id caller        = *context.current_function;
+            cpp_entity_id caller_method = *context.current_function;
+            cpp_entity_id callee = detail::get_entity_id(referenced);
+            cpp_entity_id callee_method = detail::get_entity_id(referenced);
+
+            if (context.current_class.has_value())
+            {
+                caller = *context.current_class;
+            }
+
+            return cpp_member_function_call::build(std::move(type), std::move(caller),
+                                                   std::move(caller_method), std::move(callee),
+                                                   std::move(callee_method));
+        }
 
         return nullptr;
     }
