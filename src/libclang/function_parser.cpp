@@ -95,12 +95,6 @@ void add_parameters(const detail::parse_context& context, Builder& builder, cons
     }
 }
 
-std::unique_ptr<cpp_expression> parse_function_call(const detail::parse_context& context,
-                                                    const CXCursor&              cur)
-{
-    return detail::parse_expression(context, cur);
-}
-
 template <class Builder>
 void add_function_calls(const detail::parse_context& context, Builder& builder, const CXCursor& cur)
 {
@@ -111,12 +105,13 @@ void add_function_calls(const detail::parse_context& context, Builder& builder, 
     detail::visit_children(
         cur,
         [&](const CXCursor& child) {
-            if (clang_getCursorKind(child) != CXCursor_CallExpr)
+            auto kind = clang_getCursorKind(child);
+            if (kind != CXCursor_CallExpr)
                 return;
 
             try
             {
-                auto function_call = parse_function_call(context, child);
+                auto function_call = detail::parse_expression(context, child);
                 if (function_call)
                     builder.add_function_call(std::move(function_call));
             }
@@ -587,7 +582,7 @@ std::unique_ptr<cpp_entity> parse_cpp_function_impl(const detail::parse_context&
     if (suffix.noexcept_condition)
         builder.noexcept_condition(std::move(suffix.noexcept_condition));
 
-    context.current_function = detail::get_entity_id(cur);
+    context.current_function     = detail::get_entity_id(cur);
     context.current_function_usr = clang_getCString(clang_getCursorUSR(cur));
 
     add_function_calls(context, builder, cur);
@@ -733,7 +728,7 @@ std::unique_ptr<cpp_entity> detail::parse_cpp_member_function(const detail::pars
     context.comments.match(builder.get(), cur);
     builder.get().add_attribute(prefix.attributes);
 
-    context.current_function = detail::get_entity_id(cur);
+    context.current_function     = detail::get_entity_id(cur);
     context.current_function_usr = clang_getCString(clang_getCursorUSR(cur));
 
     add_parameters(context, builder, cur);

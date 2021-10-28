@@ -4,6 +4,7 @@
 
 #include <cppast/cpp_expression.hpp>
 
+#include "libclang_visitor.hpp"
 #include "parse_functions.hpp"
 
 using namespace cppast;
@@ -19,7 +20,8 @@ std::unique_ptr<cpp_expression> detail::parse_expression(const detail::parse_con
 
     auto type = parse_type(context, cur, clang_getCursorType(cur));
     auto expr = to_string(stream, stream.end());
-    if (kind == CXCursor_CallExpr)
+    if (kind == CXCursor_CallExpr || kind == CXCursor_DeclRefExpr
+        || kind == CXCursor_OverloadedDeclRef)
     {
         if (expr.empty() || expr.back().spelling != ")")
         {
@@ -47,11 +49,19 @@ std::unique_ptr<cpp_expression> detail::parse_expression(const detail::parse_con
                                                    std::move(caller_method), std::move(callee),
                                                    std::move(callee_method));
         }
-        else if(referenced_kind == CXCursor_FunctionDecl)
+        else if (referenced_kind == CXCursor_FunctionDecl)
         {
+            auto current_function = context.current_function;
+            auto current_function_usr = context.current_function_usr;
+
+            try_parse_cpp_function_template_specialization(context, referenced, false);
+
+            context.current_function = current_function;
+            context.current_function_usr = current_function_usr;
+
             cpp_entity_id caller        = *context.current_function;
             cpp_entity_id caller_method = *context.current_function;
-            cpp_entity_id callee = detail::get_entity_id(referenced);
+            cpp_entity_id callee        = detail::get_entity_id(referenced);
             cpp_entity_id callee_method = detail::get_entity_id(referenced);
 
             if (context.current_class.has_value())
@@ -62,6 +72,41 @@ std::unique_ptr<cpp_expression> detail::parse_expression(const detail::parse_con
             return cpp_member_function_call::build(std::move(type), std::move(caller),
                                                    std::move(caller_method), std::move(callee),
                                                    std::move(callee_method));
+        }
+        else if (referenced_kind == CXCursor_FunctionTemplate)
+        {
+            cpp_entity_id caller        = *context.current_function;
+            cpp_entity_id caller_method = *context.current_function;
+
+            CXCursor callee_cursor;
+            detail::visit_children(
+                referenced,
+                [&](const CXCursor& child) {
+                    (void)child;
+                    if (clang_getCursorKind(child) == CXCursor_FunctionDecl)
+                        callee_cursor = child;
+                },
+                true);
+
+            cpp_entity_id callee        = detail::get_entity_id(callee_cursor);
+            cpp_entity_id callee_method = detail::get_entity_id(callee_cursor);
+
+            if (context.current_class.has_value())
+            {
+                caller = *context.current_class;
+            }
+
+            return cpp_member_function_call::build(std::move(type), std::move(caller),
+                                                   std::move(caller_method), std::move(callee),
+                                                   std::move(callee_method));
+        }
+        else
+        {
+            context.logger->log("libclang parser",
+                                format_diagnostic(severity::debug, detail::make_location(cur),
+                                                  "cannot parse call expression: '",
+                                                  detail::get_cursor_kind_spelling(cur).c_str(),
+                                                  "'"));
         }
 
         return nullptr;
