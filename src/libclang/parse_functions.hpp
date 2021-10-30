@@ -12,6 +12,9 @@
 #include "parse_error.hpp" // for convenience
 #include "preprocessor.hpp"
 #include "raii_wrapper.hpp"
+#include "libclang_visitor.hpp"
+
+#include <optional>
 
 namespace cppast
 {
@@ -50,15 +53,15 @@ namespace detail
 
     struct parse_context
     {
-        CXTranslationUnit                                 tu;
-        CXFile                                            file;
-        type_safe::object_ref<const diagnostic_logger>    logger;
-        type_safe::object_ref<const cpp_entity_index>     idx;
-        comment_context                                   comments;
-        mutable bool                                      error;
-        mutable std::optional<cpp_entity_id> current_function{};
-        mutable std::optional<cpp_entity_id> current_class{};
-        mutable std::string                               current_function_usr{};
+        CXTranslationUnit                              tu;
+        CXFile                                         file;
+        type_safe::object_ref<const diagnostic_logger> logger;
+        type_safe::object_ref<const cpp_entity_index>  idx;
+        comment_context                                comments;
+        mutable bool                                   error;
+        mutable std::optional<cpp_entity_id>           current_function{};
+        mutable std::optional<cpp_entity_id>           current_class{};
+        mutable std::string                            current_function_usr{};
     };
 
     // parse default value of variable, function parameter...
@@ -159,6 +162,44 @@ namespace detail
     std::unique_ptr<cpp_entity> parse_entity(const parse_context& context, cpp_entity* parent,
                                              const CXCursor& cur,
                                              const CXCursor& parent_cur = clang_getNullCursor());
+
+    template <class Builder>
+    void add_function_calls(const parse_context& context, Builder& builder, const CXCursor& cur)
+    {
+        auto kind = clang_getCursorKind(cur);
+        DEBUG_ASSERT(kind == CXCursor_FunctionDecl || kind == CXCursor_CXXMethod,
+                     detail::assert_handler{});
+
+        detail::visit_children(
+            cur,
+            [&](const CXCursor& child) {
+                auto kind = clang_getCursorKind(child);
+                if (kind != CXCursor_CallExpr)
+                    return;
+
+                try
+                {
+                    auto function_call = detail::parse_expression(context, child);
+                    if (function_call)
+                        builder.add_function_call(std::move(function_call));
+                }
+                catch (detail::parse_error& ex)
+                {
+                    context.error = true;
+                    context.logger->log("libclang parser", ex.get_diagnostic(context.file));
+                }
+                catch (std::logic_error& ex)
+                {
+                    context.error = true;
+                    context.logger->log("libclang parser",
+                                        diagnostic{ex.what(),
+                                                   detail::make_location(context.file, child),
+                                                   severity::error});
+                }
+            },
+            true);
+    }
+
 } // namespace detail
 } // namespace cppast
 

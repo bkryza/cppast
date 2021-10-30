@@ -108,7 +108,8 @@ bool is_friend(const CXCursor& parent_cur)
 
 std::unique_ptr<cpp_entity> detail::parse_entity(const detail::parse_context& context,
                                                  cpp_entity* parent, const CXCursor& cur,
-                                                 const CXCursor& parent_cur) try
+                                                 const CXCursor& parent_cur)
+try
 {
     if (context.logger->is_verbose())
     {

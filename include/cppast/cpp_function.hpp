@@ -85,6 +85,10 @@ public:
         return function_calls_;
     }
 
+    void add_function_call(std::unique_ptr<cpp_expression> fc) {
+        function_calls_.emplace_back(std::move(fc));
+    }
+
     /// \returns The [cppast::cpp_function_body_kind]().
     /// \notes This matches the [cppast::cpp_forward_declarable]() queries.
     cpp_function_body_kind body_kind() const noexcept
@@ -115,6 +119,7 @@ public:
         return do_get_signature();
     }
 
+    mutable std::vector<std::unique_ptr<cpp_expression>>   function_calls_;
 protected:
     /// Builder class for functions.
     ///
@@ -208,7 +213,6 @@ private:
     std::unique_ptr<cpp_expression>                noexcept_expr_;
     cpp_function_body_kind                         body_;
     bool                                           variadic_;
-    std::vector<std::unique_ptr<cpp_expression>>   function_calls_;
 };
 
 /// A [cppast::cpp_entity]() modelling a C++ function.

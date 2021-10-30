@@ -95,43 +95,6 @@ void add_parameters(const detail::parse_context& context, Builder& builder, cons
     }
 }
 
-template <class Builder>
-void add_function_calls(const detail::parse_context& context, Builder& builder, const CXCursor& cur)
-{
-    auto kind = clang_getCursorKind(cur);
-    DEBUG_ASSERT(kind == CXCursor_FunctionDecl || kind == CXCursor_CXXMethod,
-                 detail::assert_handler{});
-
-    detail::visit_children(
-        cur,
-        [&](const CXCursor& child) {
-            auto kind = clang_getCursorKind(child);
-            if (kind != CXCursor_CallExpr)
-                return;
-
-            try
-            {
-                auto function_call = detail::parse_expression(context, child);
-                if (function_call)
-                    builder.add_function_call(std::move(function_call));
-            }
-            catch (detail::parse_error& ex)
-            {
-                context.error = true;
-                context.logger->log("libclang parser", ex.get_diagnostic(context.file));
-            }
-            catch (std::logic_error& ex)
-            {
-                context.error = true;
-                context.logger->log("libclang parser",
-                                    diagnostic{ex.what(),
-                                               detail::make_location(context.file, child),
-                                               severity::error});
-            }
-        },
-        true);
-}
-
 bool is_templated_cursor(const CXCursor& cur)
 {
     return clang_getTemplateCursorKind(cur) != CXCursor_NoDeclFound
@@ -585,7 +548,7 @@ std::unique_ptr<cpp_entity> parse_cpp_function_impl(const detail::parse_context&
     context.current_function     = detail::get_entity_id(cur);
     context.current_function_usr = clang_getCString(clang_getCursorUSR(cur));
 
-    add_function_calls(context, builder, cur);
+    detail::add_function_calls(context, builder, cur);
 
     context.current_function.reset();
     context.current_function_usr = "";
@@ -740,7 +703,7 @@ std::unique_ptr<cpp_entity> detail::parse_cpp_member_function(const detail::pars
 
     skip_parameters(stream);
 
-    add_function_calls(context, builder, cur);
+    detail::add_function_calls(context, builder, cur);
 
     context.current_function.reset();
     context.current_function_usr = "";

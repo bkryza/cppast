@@ -20,6 +20,12 @@ public:
     class builder : public basic_builder<cpp_function_template, cpp_function_base>
     {
     public:
+        void add_function_call(std::unique_ptr<cppast::cpp_expression> fc)
+        {
+            static_cast<cpp_function_template&>(get()).function().function_calls_.emplace_back(
+                std::move(fc));
+        }
+
         using basic_builder::basic_builder;
     };
 
@@ -50,6 +56,13 @@ public:
     : public specialization_builder<cpp_function_template_specialization, cpp_function_base>
     {
     public:
+        void add_function_call(std::unique_ptr<cppast::cpp_expression> fc)
+        {
+            static_cast<cpp_function_template_specialization&>(get())
+                .function()
+                .function_calls_.emplace_back(std::move(fc));
+        }
+
         using specialization_builder::specialization_builder;
 
     private:

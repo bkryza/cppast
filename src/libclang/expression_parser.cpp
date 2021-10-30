@@ -54,7 +54,7 @@ std::unique_ptr<cpp_expression> detail::parse_expression(const detail::parse_con
             auto current_function = context.current_function;
             auto current_function_usr = context.current_function_usr;
 
-            try_parse_cpp_function_template_specialization(context, referenced, false);
+            auto callee_entity = try_parse_cpp_function_template_specialization(context, referenced, false);
 
             context.current_function = current_function;
             context.current_function_usr = current_function_usr;
@@ -64,14 +64,18 @@ std::unique_ptr<cpp_expression> detail::parse_expression(const detail::parse_con
             cpp_entity_id callee        = detail::get_entity_id(referenced);
             cpp_entity_id callee_method = detail::get_entity_id(referenced);
 
+            (void)callee_entity;
             if (context.current_class.has_value())
             {
                 caller = *context.current_class;
             }
 
-            return cpp_member_function_call::build(std::move(type), std::move(caller),
+            auto fc = cpp_member_function_call::build(std::move(type), std::move(caller),
                                                    std::move(caller_method), std::move(callee),
                                                    std::move(callee_method));
+            fc->callee_entity_ = std::move(callee_entity);
+
+            return fc;
         }
         else if (referenced_kind == CXCursor_FunctionTemplate)
         {

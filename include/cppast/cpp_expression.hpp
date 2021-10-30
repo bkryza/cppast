@@ -173,6 +173,7 @@ public:
         return callee_method_id_;
     }
 
+    std::unique_ptr<cpp_entity> callee_entity_;
 private:
     cpp_member_function_call(std::unique_ptr<cpp_type> type, cpp_entity_id caller_id,
                              cpp_entity_id caller_method_id, cpp_entity_id callee_id,
@@ -188,6 +189,7 @@ private:
 
     cpp_entity_id callee_id_;
     cpp_entity_id callee_method_id_;
+
 };
 
 /// \exclude
