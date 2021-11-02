@@ -8,6 +8,7 @@
 /// Given an input file it will print the AST.
 
 #include <cppast/visitor.hpp> // visit()
+#include <cppast/cpp_function.hpp>
 
 #include "example_parser.hpp"
 
@@ -24,8 +25,14 @@ void print_ast(const cppast::cpp_file& file)
             std::cout << prefix << "'" << e.name() << "' - " << cppast::to_string(e.kind()) << '\n';
             prefix += "\t";
         }
-        else // if (info.event == cppast::visitor_info::leaf_entity) // a non-container entity
-            std::cout << prefix << "'" << e.name() << "' - " << cppast::to_string(e.kind()) << '\n';
+        else {// if (info.event == cppast::visitor_info::leaf_entity) // a non-container entity
+            std::cout << prefix << "'" << e.name() << "' - " << cppast::to_string(e.kind());
+            if(e.kind() == cppast::cpp_entity_kind::function_t) {
+                const auto& f = static_cast<const cppast::cpp_function_base&>(e);
+                std::cout << "(" <<  f.function_calls().size() << ")";
+            }
+            std::cout << "\n";
+        }
     });
 }
 

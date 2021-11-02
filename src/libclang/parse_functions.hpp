@@ -9,10 +9,10 @@
 #include <cppast/parser.hpp>
 
 #include "cxtokenizer.hpp" // for convenience
+#include "libclang_visitor.hpp"
 #include "parse_error.hpp" // for convenience
 #include "preprocessor.hpp"
 #include "raii_wrapper.hpp"
-#include "libclang_visitor.hpp"
 
 #include <optional>
 
@@ -174,7 +174,7 @@ namespace detail
             cur,
             [&](const CXCursor& child) {
                 auto kind = clang_getCursorKind(child);
-                if (kind != CXCursor_CallExpr)
+                if ((kind != CXCursor_CallExpr) && (kind != CXCursor_OverloadedDeclRef))
                     return;
 
                 try

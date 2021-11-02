@@ -15,14 +15,14 @@
 template <typename Callback>
 int example_main(int argc, char* argv[], const cppast::cpp_entity_index& index, Callback cb) try
 {
-    if (argc != 2)
+    if (argc != 1)
     {
         std::cerr << "usage: " << argv[0] << " <compile-commands-json-dir>\n";
         return 1;
     }
     else
     {
-        cppast::libclang_compilation_database database(argv[1]); // the compilation database
+        cppast::libclang_compilation_database database("/tmp/cppasttest/"); // the compilation database
 
         // simple_file_parser allows parsing multiple files and stores the results for us
         cppast::simple_file_parser<cppast::libclang_parser> parser(type_safe::ref(index));

@@ -626,8 +626,8 @@ std::unique_ptr<cpp_type> parse_type_impl(const detail::parse_context& context, 
         else if (auto ptype = try_parse_template_parameter_type(context, cur, type))
             // template parameter type is unexposed
             return ptype;
-        // else
-        // return cpp_unexposed_type::build(get_type_spelling(cur, type));
+        else
+        return cpp_unexposed_type::build(get_type_spelling(cur, type));
     // fallthrough
     case CXType_Complex:
         return cpp_unexposed_type::build(get_type_spelling(cur, type));

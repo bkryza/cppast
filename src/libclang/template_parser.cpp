@@ -263,7 +263,7 @@ std::unique_ptr<cpp_entity> detail::parse_cpp_function_template(
         std::unique_ptr<cpp_function_base>(static_cast<cpp_function_base*>(func.release())));
     parse_parameters(builder, context, cur);
     handle_comment_attributes(builder.get(), *func_ptr);
-
+/*
     context.current_function     = detail::get_entity_id(cur);
     context.current_function_usr = clang_getCString(clang_getCursorUSR(cur));
 
@@ -271,7 +271,7 @@ std::unique_ptr<cpp_entity> detail::parse_cpp_function_template(
 
     context.current_function.reset();
     context.current_function_usr = "";
-
+*/
     return builder.finish(*context.idx, detail::get_entity_id(cur),
                           builder.get().function().is_definition());
 }
@@ -340,6 +340,7 @@ std::unique_ptr<cpp_entity> detail::try_parse_cpp_function_template_specializati
     parse_arguments(builder, context, cur);
     handle_comment_attributes(builder.get(), *func_ptr);
 
+    /*
     context.current_function     = detail::get_entity_id(cur);
     context.current_function_usr = clang_getCString(clang_getCursorUSR(cur));
 
@@ -347,6 +348,7 @@ std::unique_ptr<cpp_entity> detail::try_parse_cpp_function_template_specializati
 
     context.current_function.reset();
     context.current_function_usr = "";
+    */
 
     return builder.finish(*context.idx, detail::get_entity_id(cur),
                           builder.get().function().is_definition());

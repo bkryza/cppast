@@ -568,7 +568,6 @@ std::unique_ptr<cpp_entity> detail::parse_cpp_function(const detail::parse_conte
     DEBUG_ASSERT(clang_getCursorKind(cur) == CXCursor_FunctionDecl
                      || clang_getTemplateCursorKind(cur) == CXCursor_FunctionDecl,
                  detail::assert_handler{});
-    type_safe::optional<cpp_entity_ref> semantic_parent;
     return parse_cpp_function_impl(context, cur, false, is_friend);
 }
 
@@ -691,9 +690,6 @@ std::unique_ptr<cpp_entity> detail::parse_cpp_member_function(const detail::pars
     context.comments.match(builder.get(), cur);
     builder.get().add_attribute(prefix.attributes);
 
-    context.current_function     = detail::get_entity_id(cur);
-    context.current_function_usr = clang_getCString(clang_getCursorUSR(cur));
-
     add_parameters(context, builder, cur);
     if (clang_Cursor_isVariadic(cur))
         builder.is_variadic();
@@ -702,6 +698,9 @@ std::unique_ptr<cpp_entity> detail::parse_cpp_member_function(const detail::pars
         builder.is_constexpr();
 
     skip_parameters(stream);
+
+    context.current_function     = detail::get_entity_id(cur);
+    context.current_function_usr = clang_getCString(clang_getCursorUSR(cur));
 
     detail::add_function_calls(context, builder, cur);
 

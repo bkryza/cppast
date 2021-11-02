@@ -74,6 +74,11 @@ std::unique_ptr<cpp_entity> detail::parse_cpp_namespace(const detail::parse_cont
 
     detail::visit_children(cur, [&](const CXCursor& cur) {
         auto entity = parse_entity(context, &builder.get(), cur);
+        if(entity->name() == "m2") {
+            (void)entity;
+            auto overloaded = clang_getOverloadedDecl(cur, 0);
+            (void)overloaded;
+        }
         if (entity)
             builder.add_child(std::move(entity));
     });
