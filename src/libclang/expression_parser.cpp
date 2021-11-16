@@ -13,37 +13,47 @@ std::unique_ptr<cpp_expression> detail::parse_expression(const detail::parse_con
                                                          const CXCursor&              cur)
 {
     auto kind = clang_getCursorKind(cur);
-    //DEBUG_ASSERT(clang_isExpression(kind) , detail::assert_handler{});
+    // DEBUG_ASSERT(clang_isExpression(kind) , detail::assert_handler{});
 
     detail::cxtokenizer    tokenizer(context.tu, context.file, cur);
     detail::cxtoken_stream stream(tokenizer, cur);
 
-    auto type = parse_type(context, cur, clang_getCursorType(cur));
-    auto expr = to_string(stream, stream.end());
+    auto        type = parse_type(context, cur, clang_getCursorType(cur));
+    auto        expr = to_string(stream, stream.end());
+    std::string ex   = expr.as_string();
+    (void)ex;
+
     if (kind == CXCursor_CallExpr || kind == CXCursor_DeclRefExpr
         || kind == CXCursor_OverloadedDeclRef)
     {
-        /*if (expr.empty() || expr.back().spelling != ")")
+        auto referenced      = clang_getCursorReferenced(cur);
+        auto referenced_kind = clang_getCursorKind(referenced);
+
+        if ((expr.empty() || expr.back().spelling != ")")
+            && (referenced_kind != CXCursor_OverloadedDeclRef))
         {
             // we have a call expression that doesn't end in a closing parentheses
             // this means default constructor, don't parse it at all
             // so, for example a variable doesn't have a default value
             return nullptr;
-        }*/
+        }
 
-        auto referenced      = clang_getCursorReferenced(cur);
-        auto referenced_kind = clang_getCursorKind(referenced);
-
-        if(referenced_kind == CXCursor_OverloadedDeclRef) {
+        if (referenced_kind == CXCursor_OverloadedDeclRef)
+        {
             auto overloaded_count = clang_getNumOverloadedDecls(referenced);
             (void)overloaded_count;
-            referenced = clang_getOverloadedDecl(referenced, 0);
+            // TODO: should we do sth here when the overloaded_count is greater than 1?
+            referenced      = clang_getOverloadedDecl(referenced, 0);
             referenced_kind = clang_getCursorKind(referenced);
         }
 
         if (referenced_kind == CXCursor_CXXMethod)
         {
-            cpp_entity_id caller        = *context.current_function;
+            // Creating a call to a class method
+            cpp_entity_id caller = *context.current_function;
+            if (context.current_class.has_value())
+                caller = *context.current_class;
+
             cpp_entity_id caller_method = *context.current_function;
             cpp_entity_id callee = detail::get_entity_id(clang_getCursorSemanticParent(referenced));
             cpp_entity_id callee_method = detail::get_entity_id(referenced);
@@ -68,20 +78,30 @@ std::unique_ptr<cpp_expression> detail::parse_expression(const detail::parse_con
             context.current_function     = current_function;
             context.current_function_usr = current_function_usr;
 
-            cpp_entity_id caller        = *context.current_function;
+            cpp_entity_id caller = *context.current_function;
+            if (context.current_class.has_value())
+                caller = *context.current_class;
+
             cpp_entity_id caller_method = *context.current_function;
             cpp_entity_id callee        = detail::get_entity_id(referenced);
             cpp_entity_id callee_method = detail::get_entity_id(referenced);
 
-            (void)callee_entity;
             if (context.current_class.has_value())
             {
                 caller = *context.current_class;
             }
 
+            // Check if the function is a template specialization
+            if (callee_entity)
+            {
+                callee = detail::get_entity_id(clang_getSpecializedCursorTemplate(referenced));
+                callee_method
+                    = detail::get_entity_id(clang_getSpecializedCursorTemplate(referenced));
+            }
+
             auto fc            = cpp_member_function_call::build(std::move(type), std::move(caller),
-                                                      std::move(caller_method), std::move(callee),
-                                                      std::move(callee_method));
+                                                                 std::move(caller_method), std::move(callee),
+                                                                 std::move(callee_method));
             fc->callee_entity_ = std::move(callee_entity);
 
             return fc;
@@ -122,7 +142,6 @@ std::unique_ptr<cpp_expression> detail::parse_expression(const detail::parse_con
         }
         else
         {
-            //throw "CANNOT PARSE CALL EXPRESSION";
             context.logger->log("libclang parser",
                                 format_diagnostic(severity::debug, detail::make_location(cur),
                                                   "cannot parse call expression: '",
