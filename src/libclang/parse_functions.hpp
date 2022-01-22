@@ -13,6 +13,8 @@
 #include "preprocessor.hpp"
 #include "raii_wrapper.hpp"
 
+#include <optional>
+
 namespace cppast
 {
 class cpp_expression;
