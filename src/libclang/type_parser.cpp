@@ -532,7 +532,7 @@ std::unique_ptr<cpp_type> try_parse_instantiation_type(const detail::parse_conte
 
             //assert(toks.size() == count);
 
-            for (auto i = 0U; i < count; i++)
+            for (auto i = 0U; i < toks.size(); i++)
             {
 
                 auto cxtype = clang_Type_getTemplateArgumentAsType(type, i);
