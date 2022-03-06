@@ -754,6 +754,27 @@ cpp_token_string detail::to_string(cxtoken_stream& stream, cxtoken_iterator end)
     return builder.finish();
 }
 
+cpp_token_string detail::to_string(cxtoken_stream& stream, cxtoken_iterator end, int template_multibracket)
+{
+    cpp_token_string::builder builder;
+
+    while (stream.cur() != end)
+    {
+        auto& token = stream.get();
+        builder.add_token(cpp_token(get_kind(token), token.c_str()));
+    }
+
+    for(int i=0; i<template_multibracket; i++)
+    {
+        builder.add_token(cpp_token(cpp_token_kind::punctuation, ">"));
+    }
+
+    if (stream.unmunch())
+        builder.unmunch();
+
+    return builder.finish();
+}
+
 bool detail::append_scope(detail::cxtoken_stream& stream, std::string& scope)
 {
     // add identifiers and "::" to current scope name,

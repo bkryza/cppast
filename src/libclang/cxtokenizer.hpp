@@ -191,6 +191,7 @@ namespace detail
 
     // converts a token range to a string
     cpp_token_string to_string(cxtoken_stream& stream, cxtoken_iterator end);
+    cpp_token_string to_string(cxtoken_stream& stream, cxtoken_iterator end, int template_multibracket);
 
     // appends token to scope, if it is still valid
     // else clears it

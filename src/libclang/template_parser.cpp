@@ -281,9 +281,10 @@ void parse_arguments(Builder& b, const detail::parse_context& context, const CXC
     if (stream.peek() == "<")
     {
         auto iter = detail::find_closing_bracket(stream);
+        std::string is_template_close_multibracket = iter->c_str();
         stream.bump();
 
-        auto args = detail::to_string(stream, iter);
+        auto args = detail::to_string(stream, iter, is_template_close_multibracket == ">>");
         b.add_unexposed_arguments(std::move(args));
     }
     else
