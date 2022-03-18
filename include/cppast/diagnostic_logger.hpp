@@ -18,7 +18,7 @@ class diagnostic_logger
 {
 public:
     /// \effects Creates it either as verbose or not.
-    explicit diagnostic_logger(bool is_verbose = false) noexcept : verbose_(is_verbose) {}
+    explicit diagnostic_logger(bool is_verbose = false, bool is_quiet = false) noexcept : verbose_(is_verbose), quiet_(is_quiet) {}
 
     diagnostic_logger(const diagnostic_logger&) = delete;
     diagnostic_logger& operator=(const diagnostic_logger&) = delete;
@@ -42,14 +42,22 @@ public:
         return verbose_;
     }
 
+    /// \effects Sets whether or not the logger prints any diagnostics.
+    void set_quiet(bool quiet) noexcept
+    {
+        quiet_ = quiet;
+    }
 private:
     virtual bool do_log(const char* source, const diagnostic& d) const = 0;
 
     bool verbose_;
+    bool quiet_;
 };
 
 /// \returns The default logger object.
 type_safe::object_ref<const diagnostic_logger> default_logger() noexcept;
+
+type_safe::object_ref<const diagnostic_logger> default_quiet_logger() noexcept;
 
 /// \returns The default verbose logger object.
 type_safe::object_ref<const diagnostic_logger> default_verbose_logger() noexcept;

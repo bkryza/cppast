@@ -6,19 +6,30 @@
 
 #include <cstdio>
 #include <mutex>
+#include <thread>
 
 using namespace cppast;
 
 bool diagnostic_logger::log(const char* source, const diagnostic& d) const
 {
+    if (quiet_)
+        return false;
+
     if (!verbose_ && d.severity == severity::debug)
         return false;
+
     return do_log(source, d);
 }
 
 type_safe::object_ref<const diagnostic_logger> cppast::default_logger() noexcept
 {
     static const stderr_diagnostic_logger logger(false);
+    return type_safe::ref(logger);
+}
+
+type_safe::object_ref<const diagnostic_logger> cppast::default_quiet_logger() noexcept
+{
+    static const stderr_diagnostic_logger logger(false, true);
     return type_safe::ref(logger);
 }
 
@@ -30,7 +41,11 @@ type_safe::object_ref<const diagnostic_logger> cppast::default_verbose_logger() 
 
 bool stderr_diagnostic_logger::do_log(const char* source, const diagnostic& d) const
 {
-    auto loc = d.location.to_string();
+    auto              loc = d.location.to_string();
+    std::stringstream thread_id_ss;
+    thread_id_ss << std::this_thread::get_id();
+    auto thread_id = thread_id_ss.str();
+
     if (loc.empty())
         std::fprintf(stderr, "[%s] [%s] %s\n", source, to_string(d.severity), d.message.c_str());
     else

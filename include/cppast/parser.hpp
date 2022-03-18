@@ -144,7 +144,6 @@ public:
     {
         return type_safe::ref(files_);
     }
-
 private:
     Parser                                        parser_;
     detail::intrusive_list<cpp_file>              files_;
