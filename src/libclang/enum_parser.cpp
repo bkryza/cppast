@@ -83,6 +83,9 @@ std::unique_ptr<cpp_entity> detail::parse_cpp_enum(const detail::parse_context& 
     type_safe::optional<cpp_entity_ref> semantic_parent;
     auto                                builder = make_enum_builder(context, cur, semantic_parent);
     context.comments.match(builder.get(), cur);
+
+    builder.get().set_location(cppast::detail::get_source_location(cur));
+
     detail::visit_children(cur, [&](const CXCursor& child) {
         try
         {

@@ -122,6 +122,9 @@ std::unique_ptr<cpp_entity> detail::parse_cpp_class(const detail::parse_context&
 
     auto                                builder = make_class_builder(context, cur);
     type_safe::optional<cpp_entity_ref> semantic_parent;
+
+    builder.get().set_location(cppast::detail::get_source_location(cur));
+
     if (!is_friend)
     {
         if (!clang_equalCursors(clang_getCursorSemanticParent(cur),

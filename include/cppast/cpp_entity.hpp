@@ -23,6 +23,18 @@ struct cpp_entity_id;
 class cpp_template_parameter;
 class cpp_template;
 
+struct source_location_t
+{
+    source_location_t(const std::string& f, unsigned l, unsigned c, unsigned o)
+    : file{f}, line{l}, column{c}, offset{o}
+    {}
+
+    std::string file;
+    unsigned    line;
+    unsigned    column;
+    unsigned    offset;
+};
+
 /// The name of a scope.
 ///
 /// It is a combination of a name and optional template parameters.
@@ -122,6 +134,18 @@ public:
         comment_ = comment.value_or("");
     }
 
+    type_safe::optional<source_location_t> location() const noexcept
+    {
+        return source_location_;
+    }
+
+    /// \effects Sets the source location of the entity declaration.
+    /// \requires The comment must not be empty, if there is one.
+    void set_location(type_safe::optional<source_location_t> loc) noexcept
+    {
+        source_location_ = loc;
+    }
+
     /// \returns The list of attributes that are specified for that entity.
     const cpp_attribute_list& attributes() const noexcept
     {
@@ -182,6 +206,7 @@ private:
     cpp_attribute_list                        attributes_;
     type_safe::optional_ref<const cpp_entity> parent_;
     mutable std::atomic<void*>                user_data_;
+    type_safe::optional<source_location_t>    source_location_;
 
     template <typename T>
     friend struct detail::intrusive_list_access;

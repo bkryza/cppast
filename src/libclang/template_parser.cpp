@@ -263,6 +263,9 @@ std::unique_ptr<cpp_entity> detail::parse_cpp_function_template(
         std::unique_ptr<cpp_function_base>(static_cast<cpp_function_base*>(func.release())));
     parse_parameters(builder, context, cur);
     handle_comment_attributes(builder.get(), *func_ptr);
+
+    builder.get().set_location(cppast::detail::get_source_location(cur));
+
     return builder.finish(*context.idx, detail::get_entity_id(cur),
                           builder.get().function().is_definition());
 }
@@ -388,6 +391,9 @@ std::unique_ptr<cpp_entity> detail::parse_cpp_class_template_specialization(
     handle_comment_attributes(builder.get(), *c_ptr);
     parse_parameters(builder, context, cur);
     parse_arguments(builder, context, cur);
+
+    builder.get().set_location(cppast::detail::get_source_location(cur));
+
     return builder.finish(*context.idx, detail::get_entity_id(cur),
                           builder.get().class_().is_definition());
 }

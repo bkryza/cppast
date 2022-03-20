@@ -286,3 +286,19 @@ std::unique_ptr<cpp_entity> detail::parse_cpp_static_assert(const detail::parse_
     context.comments.match(*result, cur);
     return result;
 }
+
+source_location_t detail::get_source_location(const CXCursor&      cur) {
+    CXFile      file;
+    unsigned int line;
+    unsigned int column;
+    unsigned int offset;
+
+    clang_getExpansionLocation(clang_getCursorLocation(cur), &file, &line, &column, &offset);
+    CXString file_path = clang_File_tryGetRealPathName(file);
+
+    source_location_t source_loc
+        = source_location_t{std::string(clang_getCString(file_path)), line, column, offset};
+    clang_disposeString(file_path);
+
+    return source_loc;
+}

@@ -62,6 +62,9 @@ std::unique_ptr<cpp_entity> detail::parse_cpp_namespace(const detail::parse_cont
     DEBUG_ASSERT(cur.kind == CXCursor_Namespace, detail::assert_handler{});
 
     auto builder = make_ns_builder(context, cur);
+
+    builder.get().set_location(cppast::detail::get_source_location(cur));
+
     if (builder.get().is_nested())
     {
         // steal comment from parent

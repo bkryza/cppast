@@ -84,6 +84,8 @@ std::unique_ptr<cpp_entity> detail::parse_cpp_variable(const detail::parse_conte
                                                  storage_class, is_constexpr);
     context.comments.match(*result, cur);
     result->add_attribute(attributes);
+    result->set_location(cppast::detail::get_source_location(cur));
+
     return result;
 }
 
@@ -116,6 +118,9 @@ std::unique_ptr<cpp_entity> detail::parse_cpp_member_variable(const detail::pars
                                             std::move(type), std::move(default_value), is_mutable);
     }
     result->add_attribute(attributes);
+    auto sl = cppast::detail::get_source_location(cur);
+    result->set_location(sl);
+
     context.comments.match(*result, cur);
     return result;
 }

@@ -161,6 +161,8 @@ namespace detail
     std::unique_ptr<cpp_entity> parse_entity(const parse_context& context, cpp_entity* parent,
                                              const CXCursor& cur,
                                              const CXCursor& parent_cur = clang_getNullCursor());
+
+    source_location_t get_source_location(const CXCursor&      cur);
 } // namespace detail
 } // namespace cppast
 
