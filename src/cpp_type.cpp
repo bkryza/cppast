@@ -76,6 +76,47 @@ const char* cppast::to_string(cpp_builtin_type_kind kind) noexcept
     return "__ups";
 }
 
+const char* cppast::to_string(cpp_type_kind kind) noexcept
+{
+    switch (kind)
+    {
+    case cpp_type_kind::builtin_t:
+        return "builtin";
+    case cpp_type_kind::user_defined_t:
+        return "user_defined";
+    case cpp_type_kind::auto_t:
+        return "auto";
+    case cpp_type_kind::decltype_t:
+        return "decltype";
+    case cpp_type_kind::decltype_auto_t:
+        return "decltype_auto";
+    case cpp_type_kind::cv_qualified_t:
+        return "cv_qualified";
+    case cpp_type_kind::pointer_t:
+        return "pointer";
+    case cpp_type_kind::reference_t:
+        return "reference";
+    case cpp_type_kind::array_t:
+        return "array";
+    case cpp_type_kind::function_t:
+        return "function";
+    case cpp_type_kind::member_function_t:
+        return "member_function";
+    case cpp_type_kind::member_object_t:
+        return "member_object";
+    case cpp_type_kind::template_parameter_t:
+        return "template_parameter";
+    case cpp_type_kind::template_instantiation_t:
+        return "template_instantiation";
+    case cpp_type_kind::dependent_t:
+        return "dependent";
+    case cpp_type_kind::unexposed_t:
+        return "unexposed";
+    }
+    DEBUG_UNREACHABLE(detail::assert_handler{});
+    return "__ups";
+}
+
 const cpp_type& cppast::remove_cv(const cpp_type& type) noexcept
 {
     if (type.kind() == cpp_type_kind::cv_qualified_t)

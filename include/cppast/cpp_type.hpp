@@ -451,6 +451,8 @@ private:
 /// \returns The type as a string representation.
 std::string to_string(const cpp_type& type);
 
+const char* to_string(cpp_type_kind kind) noexcept;
+
 /// \exclude
 namespace detail
 {
