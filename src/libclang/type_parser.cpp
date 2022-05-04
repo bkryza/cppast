@@ -4,8 +4,8 @@
 
 #include "parse_functions.hpp"
 
-#include <cctype>
 #include <cassert>
+#include <cctype>
 
 #include <cppast/cpp_array_type.hpp>
 #include <cppast/cpp_decltype_type.hpp>
@@ -471,9 +471,9 @@ std::unique_ptr<cpp_type> try_parse_instantiation_type(const detail::parse_conte
                                                        const CXCursor& cur, const CXType& type)
 {
     return make_leave_type(cur, type, [&](std::string&& spelling) -> std::unique_ptr<cpp_type> {
-        auto count = 0U;
-        std::string sp = spelling;
-        auto ptr = spelling.c_str();
+        auto        count = 0U;
+        std::string sp    = spelling;
+        auto        ptr   = spelling.c_str();
 
         std::string templ_name;
         for (; *ptr && *ptr != '<'; ++ptr)
@@ -486,72 +486,83 @@ std::unique_ptr<cpp_type> try_parse_instantiation_type(const detail::parse_conte
         if (clang_Cursor_isNull(templ))
             return nullptr;
 
-        auto entity_id = detail::get_entity_id(templ);
-        cpp_template_instantiation_type::builder builder(
-            cpp_template_ref(entity_id, templ_name));
+        auto entity_id            = detail::get_entity_id(templ);
+        auto primary_template_ref = cpp_template_ref(entity_id, templ_name);
+        cpp_template_instantiation_type::builder builder(primary_template_ref);
 
         count = (unsigned int)clang_Type_getNumTemplateArguments(type);
         if (count > 0)
         {
             // Extract template tokens as strings from spelling
             spelling.pop_back();
-            std::string ss(spelling.substr(templ_name.size()+1));
+            std::string              ss(spelling.substr(templ_name.size() + 1));
             std::string              token;
             std::vector<std::string> toks;
-            std::string sss;
+            std::string              sss;
 
             int nested_template = 0;
-            for(const char &c : ss) {
+            for (const char& c : ss)
+            {
                 sss += c;
-                if(c == '<') {
+                if (c == '<')
+                {
                     nested_template++;
                     token += c;
                 }
-                else if(c == '>') {
+                else if (c == '>')
+                {
                     nested_template--;
                     token += c;
                 }
-                else {
-                    if(nested_template > 0) {
+                else
+                {
+                    if (nested_template > 0)
+                    {
                         token += c;
                     }
-                    else {
-                        if(c == ',') {
-                           toks.push_back(trim(token));
-                           token = "";
+                    else
+                    {
+                        if (c == ',')
+                        {
+                            toks.push_back(trim(token));
+                            token = "";
                         }
-                        else {
+                        else
+                        {
                             token += c;
                         }
                     }
                 }
             }
 
-            if(token.size() > 0)
+            if (token.size() > 0)
                 toks.push_back(trim(token));
 
-            //assert(toks.size() == count);
+            // assert(toks.size() == count);
 
             for (auto i = 0U; i < toks.size(); i++)
             {
-
                 auto cxtype = clang_Type_getTemplateArgumentAsType(type, i);
 
-                auto t = parse_type_impl(context, templ, cxtype);
+                auto t = try_parse_instantiation_type(context, templ, cxtype);
+                if (!t)
+                    t = parse_type_impl(context, templ, cxtype);
 
                 if (t.get() == nullptr
                     || (t->kind() == cpp_type_kind::unexposed_t
                         && static_cast<const cpp_unexposed_type&>(*t).name().empty()))
                 {
-                   std::string s = toks[i];
-                    try {
+                    std::string s = toks[i];
+                    try
+                    {
                         std::stoi(s);
                         auto unt = cpp_literal_expression::build(cpp_unexposed_type::build(s), s);
                         builder.add_argument(std::move(unt));
                     }
-                    catch(std::invalid_argument &e) {
+                    catch (std::invalid_argument& e)
+                    {
                         auto unt = cpp_unexposed_expression::build(cpp_unexposed_type::build(s),
-                                                                cpp_token_string::tokenize(s));
+                                                                   cpp_token_string::tokenize(s));
                         builder.add_argument(std::move(unt));
                     }
                 }
@@ -570,6 +581,9 @@ std::unique_ptr<cpp_type> try_parse_instantiation_type(const detail::parse_conte
                 spelling.pop_back();
             builder.add_unexposed_arguments(ptr);
         }
+        //        return builder.finish();
+
+        // Parse also the canonical version (e.g. for in case this is an alias)
         return builder.finish();
     });
 }
@@ -721,8 +735,7 @@ std::unique_ptr<cpp_type> parse_type_impl(const detail::parse_context& context, 
                 cpp_type_ref(detail::get_entity_id(decl), std::move(spelling)));
         });
 
-    case CXType_Pointer:
-    {
+    case CXType_Pointer: {
         auto pointee = parse_type_impl(context, cur, clang_getPointeeType(type));
         auto pointer = cpp_pointer_type::build(std::move(pointee));
 
@@ -731,8 +744,7 @@ std::unique_ptr<cpp_type> parse_type_impl(const detail::parse_context& context, 
         return make_cv_qualified(std::move(pointer), cv);
     }
     case CXType_LValueReference:
-    case CXType_RValueReference:
-    {
+    case CXType_RValueReference: {
         auto referee = parse_type_impl(context, cur, clang_getPointeeType(type));
         return cpp_reference_type::build(std::move(referee), get_reference_kind(type));
     }
@@ -752,10 +764,11 @@ std::unique_ptr<cpp_type> parse_type_impl(const detail::parse_context& context, 
 
     case CXType_Auto:
         auto canonical_type = clang_getCanonicalType(type);
-        if(canonical_type.kind == CXType_Auto) {
-            return make_leave_type(cur, type, [&](std::string&&) {
-                return cpp_auto_type::build();
-            });
+
+        if (canonical_type.kind == CXType_Auto)
+        {
+            return make_leave_type(cur, type,
+                                   [&](std::string&&) { return cpp_auto_type::build(); });
         }
         return parse_type_impl(context, cur, clang_getCanonicalType(type));
     }
@@ -769,7 +782,30 @@ std::unique_ptr<cpp_type> detail::parse_type(const detail::parse_context& contex
 
     DEBUG_ASSERT(result != nullptr, detail::parse_error_handler{}, type, "invalid type");
 
-    result->set_canonical(parse_type_impl(context, cur, clang_getCanonicalType(type)));
+    if (!result->has_canonical())
+    {
+        auto kind_declared = result->kind();
+
+        auto ct = clang_getCString(clang_getTypeSpelling(clang_getCanonicalType(type)));
+
+        (void)ct;
+
+        if (kind_declared == cppast::cpp_type_kind::template_instantiation_t
+            || kind_declared == cppast::cpp_type_kind::user_defined_t)
+        {
+            result->set_canonical(
+                try_parse_instantiation_type(context, cur, clang_getCanonicalType(type)));
+        }
+        else
+            result->set_canonical(parse_type_impl(context, cur, clang_getCanonicalType(type)));
+
+        auto kind = result->canonical().kind();
+
+        if (kind == cppast::cpp_type_kind::template_instantiation_t)
+            DEBUG_ASSERT(kind == kind_declared, detail::parse_error_handler{}, type,
+                         "invalid type");
+    }
+
     return result;
 }
 
@@ -788,9 +824,10 @@ std::unique_ptr<cpp_entity> detail::parse_cpp_type_alias(const detail::parse_con
     DEBUG_ASSERT(cur.kind == CXCursor_TypeAliasDecl || cur.kind == CXCursor_TypedefDecl,
                  detail::assert_handler{});
 
-    auto name = detail::get_cursor_name(cur);
-    auto type = parse_type(context, clang_Cursor_isNull(template_cur) ? cur : template_cur,
-                           clang_getTypedefDeclUnderlyingType(cur));
+    auto       name     = detail::get_cursor_name(cur);
+    const auto name_str = name.c_str();
+    auto       type = parse_type(context, clang_Cursor_isNull(template_cur) ? cur : template_cur,
+                                 clang_getTypedefDeclUnderlyingType(cur));
 
     std::unique_ptr<cpp_type_alias> result;
     if (!clang_Cursor_isNull(template_cur))
@@ -808,7 +845,7 @@ std::unique_ptr<cpp_entity> detail::parse_cpp_type_alias(const detail::parse_con
     if (detail::skip_if(stream, "using"))
     {
         // syntax: using <identifier> attributes
-        detail::skip(stream, name.c_str());
+        detail::skip(stream, name_str);
         result->add_attribute(detail::parse_attributes(stream));
     }
 

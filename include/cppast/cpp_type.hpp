@@ -87,6 +87,10 @@ public:
         canonical_ = std::move(canonical);
     }
 
+    bool has_canonical() const {
+        return canonical_.get() != nullptr;
+    }
+
 protected:
     cpp_type() noexcept : user_data_(nullptr) {}
 
