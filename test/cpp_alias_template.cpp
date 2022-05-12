@@ -37,7 +37,7 @@ template <int I>
 using e = const b<I>;
 
 /// template<int I>
-/// using f=b<I < a<int>{(0 , 1)}, int>;
+/// using f=b<I<a<int>{(0,1)},int>;
 template <int I>
 using f = b<I < a<int>{(0,1)}, int>;
 
@@ -47,9 +47,20 @@ template <typename T, template <typename> class Templ>
 using g = Templ<T>;
 
 /// template<typename T>
-/// using h=g<T, a>;
+/// using h=g<T,a>;
 template <typename T>
 using h = g<T, a>;
+
+/// template<typename T, typename... Args>
+/// using i=int,Args...;
+template <typename T, typename... Args> struct i {
+    T t;
+};
+
+/// template<typename T>
+/// using j=i<int,float,T>;
+template <typename T>
+using j = i<int, float, T>;
 )";
 
     cpp_entity_index idx;
@@ -85,9 +96,17 @@ using h = g<T, a>;
         {
             check_template_parameters(alias, {{cpp_entity_kind::template_type_parameter_t, "T"}});
 
+            REQUIRE(alias.type_alias().underlying_type().kind()
+                    == cpp_type_kind::template_instantiation_t);
+
+            const auto& underlying_type = static_cast<const cpp_template_instantiation_type&>(
+                alias.type_alias().underlying_type());
+
             cpp_template_instantiation_type::builder builder(
                 cpp_template_ref(cpp_entity_id(""), "a"));
-            builder.add_unexposed_arguments("void");
+
+            builder.add_argument(cpp_template_argument{cpp_builtin_type::build(cpp_void)});
+
             REQUIRE(equal_types(idx, alias.type_alias().underlying_type(), *builder.finish()));
         }
         else if (alias.name() == "e")
@@ -95,21 +114,31 @@ using h = g<T, a>;
             check_template_parameters(alias,
                                       {{cpp_entity_kind::non_type_template_parameter_t, "I"}});
 
-            cpp_template_instantiation_type::builder builder(
-                cpp_template_ref(cpp_entity_id(""), "b"));
-            builder.add_unexposed_arguments("I");
-            REQUIRE(equal_types(idx, alias.type_alias().underlying_type(),
-                                *cpp_cv_qualified_type::build(builder.finish(), cpp_cv_const)));
+            REQUIRE(alias.type_alias().underlying_type().kind() == cpp_type_kind::cv_qualified_t);
+
+            const auto& template_underlying_type
+                = static_cast<const cpp_template_instantiation_type&>(
+                    static_cast<const cpp_cv_qualified_type&>(alias.type_alias().underlying_type())
+                        .type());
+
+            REQUIRE(template_underlying_type.arguments_exposed());
+
+            REQUIRE(cppast::to_string(template_underlying_type) == "b<I>");
         }
         else if (alias.name() == "f")
         {
             check_template_parameters(alias,
                                       {{cpp_entity_kind::non_type_template_parameter_t, "I"}});
 
-            cpp_template_instantiation_type::builder builder(
-                cpp_template_ref(cpp_entity_id(""), "b"));
-            builder.add_unexposed_arguments("I < a<int>{(0 , 1)}, int");
-            REQUIRE(equal_types(idx, alias.type_alias().underlying_type(), *builder.finish()));
+            REQUIRE(alias.type_alias().underlying_type().kind()
+                    == cpp_type_kind::template_instantiation_t);
+
+            const auto& underlying_type = static_cast<const cpp_template_instantiation_type&>(
+                alias.type_alias().underlying_type());
+
+            REQUIRE(underlying_type.arguments_exposed());
+
+            REQUIRE(cppast::to_string(underlying_type) == "b<I<a<int>{(0,1)},int>");
         }
         else if (alias.name() == "g")
         {
@@ -117,22 +146,46 @@ using h = g<T, a>;
                                       {{cpp_entity_kind::template_type_parameter_t, "T"},
                                        {cpp_entity_kind::template_template_parameter_t, "Templ"}});
 
-            cpp_template_instantiation_type::builder builder(
-                cpp_template_ref(cpp_entity_id(""), "Templ"));
-            builder.add_unexposed_arguments("T");
-            REQUIRE(equal_types(idx, alias.type_alias().underlying_type(), *builder.finish()));
+            REQUIRE(alias.type_alias().underlying_type().kind()
+                    == cpp_type_kind::template_instantiation_t);
+
+            const auto& underlying_type = static_cast<const cpp_template_instantiation_type&>(
+                alias.type_alias().underlying_type());
+
+            REQUIRE(underlying_type.arguments_exposed());
+
+            REQUIRE(cppast::to_string(underlying_type) == "Templ<T>");
         }
         else if (alias.name() == "h")
         {
             check_template_parameters(alias, {{cpp_entity_kind::template_type_parameter_t, "T"}});
 
-            cpp_template_instantiation_type::builder builder(
-                cpp_template_ref(cpp_entity_id(""), "g"));
-            builder.add_unexposed_arguments("T, a");
-            REQUIRE(equal_types(idx, alias.type_alias().underlying_type(), *builder.finish()));
+            REQUIRE(alias.type_alias().underlying_type().kind()
+                    == cpp_type_kind::template_instantiation_t);
+
+            const auto& underlying_type = static_cast<const cpp_template_instantiation_type&>(
+                alias.type_alias().underlying_type());
+
+            REQUIRE(underlying_type.arguments_exposed());
+
+            REQUIRE(cppast::to_string(underlying_type) == "g<T,a>");
+        }
+        else if (alias.name() == "j")
+        {
+            check_template_parameters(alias, {{cpp_entity_kind::template_type_parameter_t, "T"}});
+
+            REQUIRE(alias.type_alias().underlying_type().kind()
+                    == cpp_type_kind::template_instantiation_t);
+
+            const auto& underlying_type = static_cast<const cpp_template_instantiation_type&>(
+                alias.type_alias().underlying_type());
+
+            REQUIRE(underlying_type.arguments_exposed());
+
+            REQUIRE(cppast::to_string(underlying_type) == "i<int,float,T>");
         }
         else
             REQUIRE(false);
     });
-    REQUIRE(count == 8u);
+    REQUIRE(count == 9u);
 }

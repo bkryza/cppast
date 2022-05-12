@@ -234,8 +234,8 @@ struct foo
                 auto& inst = static_cast<const cpp_template_instantiation_type&>(op.return_type());
 
                 REQUIRE(inst.primary_template().name() == "ns::type");
-                REQUIRE(!inst.arguments_exposed());
-                REQUIRE(inst.unexposed_arguments() == "int");
+                REQUIRE(inst.arguments_exposed());
+                // REQUIRE(inst.unexposed_arguments() == "int");
             }
             else if (op.name() == "operator ns::type<char>")
             {
@@ -243,8 +243,8 @@ struct foo
                 auto& inst = static_cast<const cpp_template_instantiation_type&>(op.return_type());
 
                 REQUIRE(inst.primary_template().name() == "ns::type");
-                REQUIRE(!inst.arguments_exposed());
-                REQUIRE(inst.unexposed_arguments() == "char");
+                REQUIRE(inst.arguments_exposed());
+                // REQUIRE(inst.unexposed_arguments() == "char");
             }
             else
                 REQUIRE(false);
@@ -569,8 +569,10 @@ struct foo
                 auto& inst = static_cast<const cpp_template_instantiation_type&>(op.return_type());
 
                 REQUIRE(inst.primary_template().name() == "ns::type2");
-                REQUIRE(!inst.arguments_exposed());
-                REQUIRE(inst.unexposed_arguments() == "int");
+                REQUIRE(inst.arguments_exposed());
+                REQUIRE(inst.arguments().has_value());
+                REQUIRE(equal_types(idx, inst.arguments().value()[0U].type().value(),
+                                    *cpp_builtin_type::build(cpp_int)));
             }
             else if (op.name() == "operator ns::type2<char>")
             {
@@ -578,8 +580,10 @@ struct foo
                 auto& inst = static_cast<const cpp_template_instantiation_type&>(op.return_type());
 
                 REQUIRE(inst.primary_template().name() == "ns::type2");
-                REQUIRE(!inst.arguments_exposed());
-                REQUIRE(inst.unexposed_arguments() == "char");
+                REQUIRE(inst.arguments_exposed());
+                REQUIRE(inst.arguments().has_value());
+                REQUIRE(equal_types(idx, (inst.arguments().value()[0U]).type().value(),
+                                    *cpp_builtin_type::build(cpp_char)));
             }
             else
                 REQUIRE(false);
@@ -587,4 +591,3 @@ struct foo
     });
     REQUIRE(count == 2u);
 }
-

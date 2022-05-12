@@ -157,7 +157,9 @@ template class a<int>;
                     {
                         cpp_template_instantiation_type::builder builder(
                             cpp_template_ref(cpp_entity_id(""), "a"));
-                        builder.add_unexposed_arguments("T");
+                        auto param = cpp_template_parameter_type::build(
+                                        cpp_template_type_parameter_ref(cpp_entity_id(""), "T"));
+                        builder.add_argument(cpp_template_argument{std::move(param)});
                         REQUIRE(equal_types(idx, base.type(), *builder.finish()));
                     }
                     else if (base.name() == "T::type")
@@ -192,7 +194,9 @@ template class a<int>;
                         {
                             cpp_template_instantiation_type::builder builder(
                                 cpp_template_ref(cpp_entity_id(""), "a"));
-                            builder.add_unexposed_arguments("T");
+                            auto param = cpp_template_parameter_type::build(
+                                            cpp_template_type_parameter_ref(cpp_entity_id(""), "T"));
+                            builder.add_argument(cpp_template_argument{std::move(param)});
                             REQUIRE(equal_types(idx, var.type(), *builder.finish()));
                         }
                         else if (child.name() == "var_c")

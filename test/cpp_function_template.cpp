@@ -110,10 +110,9 @@ d::d(const int&);
             REQUIRE(tfunc.function().kind() == cpp_entity_kind::function_t);
             auto& func = static_cast<const cpp_function&>(tfunc.function());
 
-            cpp_template_instantiation_type::builder builder(
-                cpp_template_ref(cpp_entity_id(""), "type"));
-            builder.add_unexposed_arguments("I");
-            REQUIRE(equal_types(idx, func.return_type(), *builder.finish()));
+            REQUIRE(func.return_type().kind() == cpp_type_kind::template_instantiation_t);
+            REQUIRE(static_cast<const cpp_template_instantiation_type&>(func.return_type())
+                        .arguments_exposed());
 
             auto type_parameter = cpp_template_type_parameter_ref(cpp_entity_id(""), "T");
             auto count          = 0u;
@@ -219,16 +218,19 @@ d::d(const int&);
         }
         else if (tfunc.name() == "b")
         {
+            REQUIRE(!tfunc.arguments_exposed());
+
             REQUIRE(tfunc.unexposed_arguments().as_string() == "0,int");
 
             REQUIRE(tfunc.function().kind() == cpp_entity_kind::function_t);
             auto& func = static_cast<const cpp_function&>(tfunc.function());
             REQUIRE(func.semantic_scope() == "d::");
 
-            cpp_template_instantiation_type::builder builder(
-                cpp_template_ref(cpp_entity_id(""), "type"));
-            builder.add_unexposed_arguments("0");
-            REQUIRE(equal_types(idx, func.return_type(), *builder.finish()));
+            const auto& func_return_type
+                = static_cast<const cpp_template_instantiation_type&>(func.return_type());
+            REQUIRE(func_return_type.arguments_exposed());
+
+            REQUIRE(cppast::to_string(func_return_type) == "type<0>");
 
             auto count = 0u;
             for (auto& param : func.parameters())

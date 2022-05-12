@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 #include <cppast/cpp_member_variable.hpp>
+#include <cppast/cpp_template.hpp>
 
 #include "test_parser.hpp"
 
@@ -108,4 +109,95 @@ struct foo
             REQUIRE(false);
     });
     REQUIRE(count == 5u);
+}
+
+TEST_CASE("cpp_member_variable_template_instantiation")
+{
+    auto code = R"(
+#include <string>
+#include <tuple>
+
+template <typename T> struct A {
+    /// T at;
+    T at;
+};
+
+template <typename T, typename... Args> struct B {
+    /// T bt;
+    T bt;
+
+    /// std::tuple<Args...> bargs;
+    std::tuple<Args...> bargs;
+};
+
+struct foo
+{
+    /// A<int> aint;
+    A<int> aint;
+
+    /// A<std::string> astring;
+    A<std::string> astring;
+
+    /// B<int,A<float>> bintafloat;
+    B<int, A<float>> bintafloat;
+};
+)";
+
+    cpp_entity_index idx;
+    auto             file = parse(idx, "cpp_member_variable_template_instantiation.cpp", code);
+    auto count = test_visit<cpp_member_variable>(*file, [&](const cpp_member_variable& var) {
+        if (var.name() == "at")
+        {
+            // ignore
+        }
+        else if (var.name() == "bt")
+        {
+            // ignore
+        }
+        else if (var.name() == "bargs")
+        {
+            // ignore
+        }
+        else if (var.name() == "aint")
+        {
+            REQUIRE(var.type().kind() == cppast::cpp_type_kind::template_instantiation_t);
+            const auto& vartype = static_cast<const cpp_template_instantiation_type&>(var.type());
+            REQUIRE(vartype.arguments_exposed());
+
+            REQUIRE(cppast::to_string(vartype) == "A<int>");
+
+            REQUIRE(vartype.arguments().has_value());
+            REQUIRE(vartype.arguments().value().size().get() == 1U);
+        }
+        else if (var.name() == "astring")
+        {
+            REQUIRE(var.type().kind() == cppast::cpp_type_kind::template_instantiation_t);
+            const auto& vartype = static_cast<const cpp_template_instantiation_type&>(var.type());
+            REQUIRE(vartype.arguments_exposed());
+
+            REQUIRE(cppast::to_string(vartype) == "A<std::string>");
+
+            REQUIRE(vartype.arguments().has_value());
+            REQUIRE(vartype.arguments().value().size().get() == 1U);
+            REQUIRE(!var.default_value());
+            REQUIRE(!var.is_mutable());
+        }
+        else if (var.name() == "bintafloat")
+        {
+            REQUIRE(var.type().kind() == cppast::cpp_type_kind::template_instantiation_t);
+            const auto& vartype = static_cast<const cpp_template_instantiation_type&>(var.type());
+            REQUIRE(vartype.arguments_exposed());
+
+            REQUIRE(cppast::to_string(vartype) == "B<int,A<float>>");
+
+            REQUIRE(vartype.arguments().has_value());
+            REQUIRE(vartype.arguments().value().size().get() == 2U);
+
+            REQUIRE(!var.default_value());
+            REQUIRE(!var.is_mutable());
+        }
+        else
+            REQUIRE(false);
+    });
+    REQUIRE(count == 6u);
 }
