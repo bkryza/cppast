@@ -5,7 +5,7 @@
 # Fetch catch.
 message(STATUS "Fetching catch")
 include(FetchContent)
-FetchContent_Declare(catch URL https://github.com/catchorg/Catch2/archive/v2.13.4.zip)
+FetchContent_Declare(catch URL https://github.com/catchorg/Catch2/archive/v2.13.5.zip)
 FetchContent_MakeAvailable(catch)
 
 set(tests
