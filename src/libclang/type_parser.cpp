@@ -3,8 +3,8 @@
 
 #include "parse_functions.hpp"
 
-#include <cctype>
 #include <cassert>
+#include <cctype>
 
 #include <cppast/cpp_array_type.hpp>
 #include <cppast/cpp_decltype_type.hpp>
@@ -102,7 +102,7 @@ std::string get_type_spelling(const CXCursor& cur, const CXType& type)
     // TODO: There are two interesting things we should keep track of here:
     // * The canonical name of a type (easy, clang has a shortcut for that)
     // * The type definition of this type, say for:
-    //   std::vector<int, default_alloator...> this should be the type (we
+    //   std::vector<int, default_allocator...> this should be the type (we
     //   should ignore specialization here!) vector<T, S> whose parent is a
     //   namespace in this case but could again be a concrete type as well (to
     //   handle nested type specializations correctly.)
@@ -507,9 +507,9 @@ std::unique_ptr<cpp_type> try_parse_instantiation_type(const detail::parse_conte
                                                        const CXCursor& cur, const CXType& type)
 {
     return make_leave_type(cur, type, [&](std::string&& spelling) -> std::unique_ptr<cpp_type> {
-        auto count = 0U;
-        std::string sp = spelling;
-        auto ptr = spelling.c_str();
+        auto        count = 0U;
+        std::string sp    = spelling;
+        auto        ptr   = spelling.c_str();
 
         std::string templ_name;
         for (; *ptr && *ptr != '<'; ++ptr)
@@ -522,55 +522,61 @@ std::unique_ptr<cpp_type> try_parse_instantiation_type(const detail::parse_conte
         if (clang_Cursor_isNull(templ))
             return nullptr;
 
-        auto entity_id = detail::get_entity_id(templ);
-        cpp_template_instantiation_type::builder builder(
-            cpp_template_ref(entity_id, templ_name));
+        auto                                     entity_id = detail::get_entity_id(templ);
+        cpp_template_instantiation_type::builder builder(cpp_template_ref(entity_id, templ_name));
 
         count = (unsigned int)clang_Type_getNumTemplateArguments(type);
+        // Count can be higher then the actual discovered tokens, due to default parameters
+        // and variadic templates
         if (count > 0)
         {
             // Extract template tokens as strings from spelling
             spelling.pop_back();
-            std::string ss(spelling.substr(templ_name.size()+1));
+            std::string              ss(spelling.substr(templ_name.size() + 1));
             std::string              token;
             std::vector<std::string> toks;
-            std::string sss;
+            std::string              sss;
 
             int nested_template = 0;
-            for(const char &c : ss) {
+            for (const char& c : ss)
+            {
                 sss += c;
-                if(c == '<') {
+                if (c == '<')
+                {
                     nested_template++;
                     token += c;
                 }
-                else if(c == '>') {
+                else if (c == '>')
+                {
                     nested_template--;
                     token += c;
                 }
-                else {
-                    if(nested_template > 0) {
+                else
+                {
+                    if (nested_template > 0)
+                    {
                         token += c;
                     }
-                    else {
-                        if(c == ',') {
-                           toks.push_back(trim(token));
-                           token = "";
+                    else
+                    {
+                        if (c == ',')
+                        {
+                            toks.push_back(trim(token));
+                            token = "";
                         }
-                        else {
+                        else
+                        {
                             token += c;
                         }
                     }
                 }
             }
 
-            if(token.size() > 0)
+            if (token.size() > 0)
                 toks.push_back(trim(token));
 
-            assert(toks.size() == count);
-
-            for (auto i = 0U; i < count; i++)
+            for (auto i = 0U; i < toks.size(); i++)
             {
-
                 auto cxtype = clang_Type_getTemplateArgumentAsType(type, i);
 
                 auto t = parse_type_impl(context, templ, cxtype);
@@ -579,15 +585,17 @@ std::unique_ptr<cpp_type> try_parse_instantiation_type(const detail::parse_conte
                     || (t->kind() == cpp_type_kind::unexposed_t
                         && static_cast<const cpp_unexposed_type&>(*t).name().empty()))
                 {
-                   std::string s = toks[i];
-                    try {
-                        std::stoi(s);
+                    std::string s = toks[i];
+                    try
+                    {
+                        std::stoull(s);
                         auto unt = cpp_literal_expression::build(cpp_unexposed_type::build(s), s);
                         builder.add_argument(std::move(unt));
                     }
-                    catch(std::invalid_argument &e) {
+                    catch (std::invalid_argument& e)
+                    {
                         auto unt = cpp_unexposed_expression::build(cpp_unexposed_type::build(s),
-                                                                cpp_token_string::tokenize(s));
+                                                                   cpp_token_string::tokenize(s));
                         builder.add_argument(std::move(unt));
                     }
                 }
@@ -640,7 +648,9 @@ std::unique_ptr<cpp_type> parse_type_impl(const detail::parse_context& context, 
     default:
         context.logger->log("libclang parser",
                             format_diagnostic(severity::warning, detail::make_location(type),
-                                              "unexpected type of kind '",
+                                              "unexpected type '",
+                                              detail::get_display_name(cur).c_str(),
+                                              "' of kind '",
                                               detail::get_type_kind_spelling(type).c_str(), "'"));
     // fallthrough
     case CXType_Dependent: // seems to have something to do with expressions, just ignore that (for
@@ -662,8 +672,6 @@ std::unique_ptr<cpp_type> parse_type_impl(const detail::parse_context& context, 
         else if (auto ptype = try_parse_template_parameter_type(context, cur, type))
             // template parameter type is unexposed
             return ptype;
-        // else
-        // return cpp_unexposed_type::build(get_type_spelling(cur, type));
     // fallthrough
     case CXType_Complex:
         return cpp_unexposed_type::build(get_type_spelling(cur, type));
