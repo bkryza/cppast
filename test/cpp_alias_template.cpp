@@ -37,9 +37,9 @@ template <int I>
 using e = const b<I>;
 
 /// template<int I>
-/// using f=b<I<a<int>{(0,1)},int>;
+/// using f=b<I<a<int>{(0,1<<0)},int>;
 template <int I>
-using f = b<I < a<int>{(0,1)}, int>;
+using f = b<I < a<int>{(0,1<<0)}, int>;
 
 /// template<typename T,template<typename>class Templ>
 /// using g=Templ<T>;
@@ -138,7 +138,10 @@ using j = i<int, float, T>;
 
             REQUIRE(underlying_type.arguments_exposed());
 
-            REQUIRE(cppast::to_string(underlying_type) == "b<I<a<int>{(0,1)},int>");
+            REQUIRE(static_cast<size_t>(underlying_type.arguments().value().size())
+                    == static_cast<size_t>(2));
+
+            REQUIRE(cppast::to_string(underlying_type) == "b<I<a<int>{(0,1<<0)},int>");
         }
         else if (alias.name() == "g")
         {

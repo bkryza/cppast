@@ -507,9 +507,8 @@ std::unique_ptr<cpp_type> try_parse_instantiation_type(const detail::parse_conte
                                                        const CXCursor& cur, const CXType& type)
 {
     return make_leave_type(cur, type, [&](std::string&& spelling) -> std::unique_ptr<cpp_type> {
-        auto        count = 0U;
-        std::string sp    = spelling;
-        auto        ptr   = spelling.c_str();
+        std::string sp  = spelling;
+        auto        ptr = spelling.c_str();
 
         std::string templ_name;
         for (; *ptr && *ptr != '<'; ++ptr)
@@ -525,82 +524,124 @@ std::unique_ptr<cpp_type> try_parse_instantiation_type(const detail::parse_conte
         auto                                     entity_id = detail::get_entity_id(templ);
         cpp_template_instantiation_type::builder builder(cpp_template_ref(entity_id, templ_name));
 
-        count = (unsigned int)clang_Type_getNumTemplateArguments(type);
-        // Count can be higher then the actual discovered tokens, due to default parameters
-        // and variadic templates
+        auto count = (unsigned int)clang_Type_getNumTemplateArguments(type);
+        // `count` can be different from the number of actual discovered tokens, due to default
+        // parameters and variadic templates
         if (count > 0)
         {
-            // Extract template tokens as strings from spelling
-            spelling.pop_back();
-            std::string              ss(spelling.substr(templ_name.size() + 1));
-            std::string              token;
-            std::vector<std::string> toks;
-            std::string              sss;
+            // Skip the trailing whitespace last '>'
+            while (!spelling.empty() && std::isspace(spelling.back()))
+                spelling.pop_back();
 
-            int nested_template = 0;
-            for (const char& c : ss)
+            if (spelling.back() != '>')
+                return nullptr;
+            spelling.pop_back();
+
+            auto spelling_it = spelling.begin();
+            std::advance(spelling_it, templ_name.size() + 1);
+
+            std::vector<std::string> parsed_parameters{};
+
+            // Track the current level of template parameter nesting
+            auto nested_template_level  = 0;
+            auto current_token_start_it = spelling_it;
+            auto current_token_end_it   = spelling_it;
+
+            // We have to keep track of the number of '<' and '>' brackets in the current parameter
+            // as not all left angle brackets outside of '()' or '{}' have to begin a nested
+            // template, they can also be comparison operators or left shift operators
+            // For '>' it's easier, as they have to be inside '()' for the code to compile
+            auto left_angle_braces  = 0;
+            auto right_angle_braces = 0;
+
+            auto nested_expression_level = 0;
+            for (; spelling_it != spelling.end(); ++spelling_it, ++current_token_end_it)
             {
-                sss += c;
-                if (c == '<')
+                if (*spelling_it == '(' || *spelling_it == '{')
+                    nested_expression_level++;
+                else if (*spelling_it == ')' || *spelling_it == '}')
+                    nested_expression_level--;
+
+                if (nested_expression_level > 0)
                 {
-                    nested_template++;
-                    token += c;
+                    // If we're inside an expression within template instantiation,
+                    // e.g. non-type integer comparison or right bit shift
+                    // This assumes the code is valid, i.e. we don't have to check
+                    // if the brackets are properly matched
+                    continue;
                 }
-                else if (c == '>')
+
+                if (*spelling_it == '<')
                 {
-                    nested_template--;
-                    token += c;
+                    // This is not necessarily a beginning of a nested template - could
+                    // be a comparison operator
+                    nested_template_level++;
+                    left_angle_braces++;
                 }
-                else
+                else if (*spelling_it == '>')
                 {
-                    if (nested_template > 0)
+                    nested_template_level--;
+                    right_angle_braces++;
+                }
+                else if (*spelling_it == ',')
+                {
+                    if (nested_template_level > 0 && (left_angle_braces > right_angle_braces))
                     {
-                        token += c;
+                        parsed_parameters.push_back(
+                            trim(std::string{current_token_start_it, current_token_end_it}));
+                        current_token_start_it = current_token_end_it = spelling_it + 1;
+                        left_angle_braces = right_angle_braces = 0;
+
+                        nested_template_level -= (left_angle_braces - right_angle_braces);
                     }
                     else
                     {
-                        if (c == ',')
-                        {
-                            toks.push_back(trim(token));
-                            token = "";
-                        }
-                        else
-                        {
-                            token += c;
-                        }
+                        parsed_parameters.push_back(
+                            trim(std::string{current_token_start_it, current_token_end_it}));
+                        current_token_start_it = current_token_end_it = spelling_it + 1;
+                        left_angle_braces = right_angle_braces = 0;
                     }
                 }
             }
 
-            if (token.size() > 0)
-                toks.push_back(trim(token));
+            if (std::distance(current_token_start_it, current_token_end_it) > 0)
+                parsed_parameters.push_back(
+                    trim(std::string{current_token_start_it, current_token_end_it}));
 
-            for (auto i = 0U; i < toks.size(); i++)
+            for (auto i = 0U; i < parsed_parameters.size(); i++)
             {
                 auto cxtype = clang_Type_getTemplateArgumentAsType(type, i);
 
-                auto t = parse_type_impl(context, templ, cxtype);
+                auto parsed_parameter_type = parse_type_impl(context, templ, cxtype);
 
-                if (t.get() == nullptr
-                    || (t->kind() == cpp_type_kind::unexposed_t
-                        && static_cast<const cpp_unexposed_type&>(*t).name().empty()))
+                if (parsed_parameter_type.get() == nullptr
+                    || (parsed_parameter_type->kind() == cpp_type_kind::unexposed_t
+                        && static_cast<const cpp_unexposed_type&>(*parsed_parameter_type)
+                               .name()
+                               .empty()))
                 {
-                    std::string s = toks[i];
+                    const auto parameter_spelling = parsed_parameters[i];
                     try
                     {
-                        std::stoull(s);
-                        auto unt = cpp_literal_expression::build(cpp_unexposed_type::build(s), s);
+                        // If the parameter parses successfully as unsigned long long, add it as
+                        // a literal expression parameter
+                        std::stoull(parameter_spelling);
+                        auto unt = cpp_literal_expression::build(cpp_unexposed_type::build(
+                                                                     parameter_spelling),
+                                                                 parameter_spelling);
                         builder.add_argument(std::move(unt));
                     }
                     catch (std::invalid_argument& e)
                     {
-                        auto unt = cpp_unexposed_expression::build(cpp_unexposed_type::build(s),
-                                                                   cpp_token_string::tokenize(s));
+                        auto unt = cpp_unexposed_expression::build(cpp_unexposed_type::build(
+                                                                       parameter_spelling),
+                                                                   cpp_token_string::tokenize(
+                                                                       parameter_spelling));
                         builder.add_argument(std::move(unt));
                     }
                 }
                 else
-                    builder.add_argument(std::move(t));
+                    builder.add_argument(std::move(parsed_parameter_type));
             }
         }
         else
@@ -649,12 +690,11 @@ std::unique_ptr<cpp_type> parse_type_impl(const detail::parse_context& context, 
         context.logger->log("libclang parser",
                             format_diagnostic(severity::warning, detail::make_location(type),
                                               "unexpected type '",
-                                              detail::get_display_name(cur).c_str(),
-                                              "' of kind '",
+                                              detail::get_display_name(cur).c_str(), "' of kind '",
                                               detail::get_type_kind_spelling(type).c_str(), "'"));
     // fallthrough
-    case CXType_Dependent: // seems to have something to do with expressions, just ignore that (for
-                           // now?)
+    case CXType_Dependent: // seems to have something to do with expressions, just ignore that
+                           // (for now?)
     case CXType_Unexposed:
         if (auto ftype = try_parse_function_type(context, cur, type))
             // guess what: after you've called clang_getPointeeType() on a function pointer
