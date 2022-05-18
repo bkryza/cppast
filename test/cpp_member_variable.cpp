@@ -3,6 +3,7 @@
 // found in the top-level directory of this distribution.
 
 #include <cppast/cpp_member_variable.hpp>
+#include <cppast/cpp_template.hpp>
 
 #include "test_parser.hpp"
 
@@ -109,4 +110,55 @@ struct foo
             REQUIRE(false);
     });
     REQUIRE(count == 5u);
+}
+
+TEST_CASE("cpp_member_variable_template_instantiation")
+{
+    auto code = R"(
+template <typename T> A {
+    T t;
+};
+
+template <typename T, typename... Args> B {
+    T t;
+    std::tuple<Args...> args;
+};
+
+struct foo
+{
+    /// A<int> aint;
+    A<int> aint;
+
+    /// A<std::string> astring;
+    A<std::string> astring;
+
+    /// B<int,std::vector<float>> b;
+    B<int, std::vector<float>> b;
+};
+)";
+
+    cpp_entity_index idx;
+    auto             file = parse(idx, "cpp_member_variable_template_instantiation.cpp", code);
+    auto count = test_visit<cpp_member_variable>(*file, [&](const cpp_member_variable& var) {
+        if (var.name() == "aint")
+        {
+            REQUIRE(var.type().kind() == cppast::cpp_type_kind::template_instantiation_t);
+            const auto& vartype = static_cast<const cpp_template_instantiation_type&>(var.type());
+            REQUIRE(vartype.arguments().size() == 1);
+
+            auto type = cpp_builtin_type::build(cpp_int);
+            REQUIRE(equal_types(idx, vartype.arguments().value().get(0).type().get(), *type));
+            REQUIRE(!var.default_value());
+            REQUIRE(!var.is_mutable());
+        }
+        else if (var.name() == "astring")
+        {
+            REQUIRE(var.type().kind() == cppast::cpp_type_kind::template_instantiation_t);
+            REQUIRE(!var.default_value());
+            REQUIRE(!var.is_mutable());
+        }
+        else
+            REQUIRE(false);
+    });
+    REQUIRE(count == 3u);
 }
