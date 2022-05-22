@@ -94,7 +94,7 @@ std::unique_ptr<cpp_entity> detail::parse_cpp_member_variable(const detail::pars
 {
     DEBUG_ASSERT(cur.kind == CXCursor_FieldDecl, detail::assert_handler{});
 
-    auto name       = get_cursor_name(cur);
+    std::string name       = get_cursor_name(cur).c_str();
     auto type       = parse_type(context, cur, clang_getCursorType(cur));
     auto is_mutable = clang_CXXField_isMutable(cur) != 0u;
 
@@ -109,12 +109,12 @@ std::unique_ptr<cpp_entity> detail::parse_cpp_member_variable(const detail::pars
         if (name.empty())
             result = cpp_bitfield::build(std::move(type), unsigned(no_bits), is_mutable);
         else
-            result = cpp_bitfield::build(*context.idx, get_entity_id(cur), name.c_str(),
+            result = cpp_bitfield::build(*context.idx, get_entity_id(cur), name,
                                          std::move(type), unsigned(no_bits), is_mutable);
     }
     else
     {
-        result = cpp_member_variable::build(*context.idx, get_entity_id(cur), name.c_str(),
+        result = cpp_member_variable::build(*context.idx, get_entity_id(cur), name,
                                             std::move(type), std::move(default_value), is_mutable);
     }
     result->add_attribute(attributes);

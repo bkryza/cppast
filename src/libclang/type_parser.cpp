@@ -871,12 +871,6 @@ std::unique_ptr<cpp_type> detail::parse_type(const detail::parse_context& contex
         }
         else
             result->set_canonical(parse_type_impl(context, cur, clang_getCanonicalType(type)));
-
-        auto kind = result->canonical().kind();
-
-        if (kind == cppast::cpp_type_kind::template_instantiation_t)
-            DEBUG_ASSERT(kind == kind_declared, detail::parse_error_handler{}, type,
-                         "invalid type");
     }
 
     return result;
