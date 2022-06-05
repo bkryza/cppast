@@ -686,6 +686,9 @@ std::unique_ptr<cpp_type> try_parse_decltype_type(const detail::parse_context&, 
 std::unique_ptr<cpp_type> parse_type_impl(const detail::parse_context& context, const CXCursor& cur,
                                           const CXType& type)
 {
+    std::string type_kind_spelling = detail::get_type_kind_spelling(type).c_str();
+    std::string type_spelling      = detail::get_type_spelling(type).c_str();
+
     switch (type.kind)
     {
     // stuff I can't parse
@@ -693,9 +696,8 @@ std::unique_ptr<cpp_type> parse_type_impl(const detail::parse_context& context, 
     default:
         context.logger->log("libclang parser",
                             format_diagnostic(severity::warning, detail::make_location(type),
-                                              "unexpected type '",
-                                              detail::get_display_name(cur).c_str(), "' of kind '",
-                                              detail::get_type_kind_spelling(type).c_str(), "'"));
+                                              "unexpected type '", type_spelling, "' of kind '",
+                                              type_kind_spelling, "'"));
     // fallthrough
     case CXType_Dependent: // seems to have something to do with expressions, just ignore that
                            // (for now?)
@@ -801,6 +803,11 @@ std::unique_ptr<cpp_type> parse_type_impl(const detail::parse_context& context, 
     case CXType_Record:
     case CXType_Enum:
     case CXType_Typedef:
+        if (type.kind == CXType_Record)
+            if (auto itype = try_parse_instantiation_type(context, cur, type))
+                // Sometimes a CXType_Record is in fact a valid template instantiation
+                return itype;
+
         return make_leave_type(cur, type, [&](std::string&& spelling) {
             auto decl = clang_getTypeDeclaration(type);
             if (detail::cxstring(clang_getCursorSpelling(decl)).empty())
@@ -853,6 +860,7 @@ std::unique_ptr<cpp_type> detail::parse_type(const detail::parse_context& contex
                                              const CXCursor& cur, const CXType& type)
 {
     auto result = parse_type_impl(context, cur, type);
+
     DEBUG_ASSERT(result != nullptr, detail::parse_error_handler{}, type, "invalid type");
 
     if (!result->has_canonical())

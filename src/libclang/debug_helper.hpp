@@ -19,6 +19,8 @@ namespace detail
 
     cxstring get_type_kind_spelling(const CXType& type) noexcept;
 
+    cxstring get_type_spelling(const CXType& type) noexcept;
+
     void print_cursor_info(const CXCursor& cur) noexcept;
 
     void print_type_info(const CXType& type) noexcept;

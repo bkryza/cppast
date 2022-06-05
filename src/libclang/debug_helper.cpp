@@ -26,6 +26,12 @@ detail::cxstring detail::get_type_kind_spelling(const CXType& type) noexcept
     return cxstring(clang_getTypeKindSpelling(type.kind));
 }
 
+detail::cxstring detail::get_type_spelling(const CXType& type) noexcept
+{
+    return cxstring(clang_getTypeSpelling(type));
+}
+
+
 namespace
 {
 std::mutex mtx;
