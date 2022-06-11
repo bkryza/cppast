@@ -113,8 +113,8 @@ target_compile_options(cppast PRIVATE
                            # clang/GCC warnings
                            $<$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:GNU>>:
                            -pedantic-errors -Werror -Wall -Wextra -Wconversion -Wsign-conversion>
-                           # disable noexcept type warning on GCC
-                           $<$<CXX_COMPILER_ID:GNU>: -Wno-noexcept-type>
+                           # disable specific warnings on GCC 12
+                           $<$<CXX_COMPILER_ID:GNU>: -Wno-noexcept-type -Wno-maybe-uninitialized -Wno-array-bounds>
                            # MSVC warnings
                            $<$<CXX_COMPILER_ID:MSVC>:
                            /W3>)
