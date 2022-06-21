@@ -11,6 +11,12 @@
 
 using namespace cppast;
 
+bool detail::has_entity_id(const CXCursor& cur)
+{
+    cxstring usr(clang_getCursorUSR(cur));
+    return !usr.empty();
+}
+
 cpp_entity_id detail::get_entity_id(const CXCursor& cur)
 {
     cxstring usr(clang_getCursorUSR(cur));
@@ -108,7 +114,8 @@ bool is_friend(const CXCursor& parent_cur)
 
 std::unique_ptr<cpp_entity> detail::parse_entity(const detail::parse_context& context,
                                                  cpp_entity* parent, const CXCursor& cur,
-                                                 const CXCursor& parent_cur) try
+                                                 const CXCursor& parent_cur)
+try
 {
     if (context.logger->is_verbose())
     {
@@ -287,8 +294,9 @@ std::unique_ptr<cpp_entity> detail::parse_cpp_static_assert(const detail::parse_
     return result;
 }
 
-source_location_t detail::get_source_location(const CXCursor&      cur) {
-    CXFile      file;
+source_location_t detail::get_source_location(const CXCursor& cur)
+{
+    CXFile       file;
     unsigned int line;
     unsigned int column;
     unsigned int offset;

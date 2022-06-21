@@ -23,6 +23,8 @@ enum cpp_storage_class_specifiers : int;
 
 namespace detail
 {
+    bool has_entity_id(const CXCursor& cur);
+
     cpp_entity_id get_entity_id(const CXCursor& cur);
 
     // only use this if the name is just a single token

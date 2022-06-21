@@ -812,6 +812,9 @@ std::unique_ptr<cpp_type> parse_type_impl(const detail::parse_context& context, 
             auto decl = clang_getTypeDeclaration(type);
             if (detail::cxstring(clang_getCursorSpelling(decl)).empty())
                 spelling = ""; // anonymous type
+            if(!detail::has_entity_id(decl))
+                return std::unique_ptr<cpp_user_defined_type>{};
+
             return cpp_user_defined_type::build(
                 cpp_type_ref(detail::get_entity_id(decl), std::move(spelling)));
         });
