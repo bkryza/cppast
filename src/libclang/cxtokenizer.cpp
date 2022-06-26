@@ -71,7 +71,7 @@ public:
         clang_disposeTokens(tu_, tokens_, no_);
     }
 
-    simple_tokenizer(const simple_tokenizer&) = delete;
+    simple_tokenizer(const simple_tokenizer&)            = delete;
     simple_tokenizer& operator=(const simple_tokenizer&) = delete;
 
     unsigned size() const noexcept
@@ -142,8 +142,8 @@ CXSourceLocation get_prev_location(const CXTranslationUnit& tu, const CXFile& fi
 
         simple_tokenizer tokenizer(tu, clang_getRange(loc_before, loc));
 
-        auto token_location = clang_getTokenLocation(tu, tokenizer[0]);
-        if (clang_equalLocations(loc_before, token_location))
+        if (tokenizer.size() > 0
+            && clang_equalLocations(loc_before, clang_getTokenLocation(tu, tokenizer[0])))
         {
             // actually found a new token and not just whitespace
             // loc_before is now the last character of the new token
@@ -754,7 +754,8 @@ cpp_token_string detail::to_string(cxtoken_stream& stream, cxtoken_iterator end)
     return builder.finish();
 }
 
-cpp_token_string detail::to_string(cxtoken_stream& stream, cxtoken_iterator end, int template_multibracket)
+cpp_token_string detail::to_string(cxtoken_stream& stream, cxtoken_iterator end,
+                                   int template_multibracket)
 {
     cpp_token_string::builder builder;
 
@@ -764,7 +765,7 @@ cpp_token_string detail::to_string(cxtoken_stream& stream, cxtoken_iterator end,
         builder.add_token(cpp_token(get_kind(token), token.c_str()));
     }
 
-    for(int i=0; i<template_multibracket; i++)
+    for (int i = 0; i < template_multibracket; i++)
     {
         builder.add_token(cpp_token(cpp_token_kind::punctuation, ">"));
     }

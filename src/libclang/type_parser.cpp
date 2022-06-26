@@ -694,10 +694,11 @@ std::unique_ptr<cpp_type> parse_type_impl(const detail::parse_context& context, 
     // stuff I can't parse
     // or have no idea what it is and wait for bug report
     default:
-        context.logger->log("libclang parser",
-                            format_diagnostic(severity::warning, detail::make_location(type),
-                                              "unexpected type '", type_spelling, "' of kind '",
-                                              type_kind_spelling, "'"));
+        if (!type_spelling.empty())
+            context.logger->log("libclang parser",
+                                format_diagnostic(severity::warning, detail::make_location(type),
+                                                  "unexpected type '", type_spelling, "' of kind '",
+                                                  type_kind_spelling, "'"));
     // fallthrough
     case CXType_Dependent: // seems to have something to do with expressions, just ignore that
                            // (for now?)
@@ -812,7 +813,7 @@ std::unique_ptr<cpp_type> parse_type_impl(const detail::parse_context& context, 
             auto decl = clang_getTypeDeclaration(type);
             if (detail::cxstring(clang_getCursorSpelling(decl)).empty())
                 spelling = ""; // anonymous type
-            if(!detail::has_entity_id(decl))
+            if (!detail::has_entity_id(decl))
                 return std::unique_ptr<cpp_user_defined_type>{};
 
             return cpp_user_defined_type::build(
