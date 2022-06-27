@@ -248,8 +248,8 @@ namespace
 {
 bool is_valid_binary(const std::string& binary)
 {
-    tpl::Process process(binary + " -v", "", [](const char*, std::size_t) {},
-                         [](const char*, std::size_t) {});
+    tpl::Process process(
+        binary + " -v", "", [](const char*, std::size_t) {}, [](const char*, std::size_t) {});
     return process.get_exit_status() == 0;
 }
 
@@ -262,11 +262,10 @@ bool is_valid_binary(const std::string& binary)
 void add_default_include_dirs(libclang_compile_config& config)
 {
     std::string  verbose_output;
-    tpl::Process process(detail::libclang_compile_config_access::clang_binary(config)
-                             + " -x c++ -v -",
-                         "", [](const char*, std::size_t) {},
-                         [&](const char* str, std::size_t n) { verbose_output.append(str, n); },
-                         true);
+    tpl::Process process(
+        detail::libclang_compile_config_access::clang_binary(config) + " -x c++ -v -", "",
+        [](const char*, std::size_t) {},
+        [&](const char* str, std::size_t n) { verbose_output.append(str, n); }, true);
     process.write("", 1);
     process.close_stdin();
     process.get_exit_status();
@@ -559,7 +558,9 @@ unsigned get_line_no(const CXCursor& cursor)
 }
 } // namespace
 std::unique_ptr<cpp_file> libclang_parser::do_parse(const cpp_entity_index& idx, std::string path,
-                                                    const compile_config& c) const try
+                                                    bool                  parse_includes,
+                                                    const compile_config& c) const
+try
 {
     DEBUG_ASSERT(std::strcmp(c.name(), "libclang") == 0, detail::precondition_error_handler{},
                  "config has mismatched type");
@@ -578,8 +579,7 @@ std::unique_ptr<cpp_file> libclang_parser::do_parse(const cpp_entity_index& idx,
     auto file = clang_getFile(tu.get(), path.c_str());
 
     cpp_file::builder builder(detail::cxstring(clang_getFileName(file)).std_str());
-    auto              macro_iter   = preprocessed.macros.begin();
-    auto              include_iter = preprocessed.includes.begin();
+    auto              macro_iter = preprocessed.macros.begin();
 
     // convert entity hierarchies
     detail::parse_context context{tu.get(),
@@ -588,17 +588,18 @@ std::unique_ptr<cpp_file> libclang_parser::do_parse(const cpp_entity_index& idx,
                                   type_safe::ref(idx),
                                   detail::comment_context(preprocessed.comments),
                                   false};
-    detail::visit_tu(tu, path.c_str(), [&](const CXCursor& cur) {
+    auto                  include_iter = preprocessed.includes.begin();
+
+    detail::visit_tu(tu, path.c_str(), parse_includes, [&](const CXCursor& cur) {
         if (clang_getCursorKind(cur) == CXCursor_InclusionDirective)
         {
-            if (!preprocessed.includes.empty())
+            if (!preprocessed.includes.empty() && (include_iter != preprocessed.includes.end()))
             {
-                DEBUG_ASSERT(include_iter != preprocessed.includes.end()
-                                 && get_line_no(cur) >= include_iter->line,
-                             detail::assert_handler{});
+                DEBUG_ASSERT(get_line_no(cur) >= include_iter->line, detail::assert_handler{});
 
-                auto full_path = include_iter->full_path.empty() ? include_iter->file_name
-                                                                 : include_iter->full_path;
+                auto file_name = include_iter->file_name;
+                auto full_path
+                    = include_iter->full_path.empty() ? file_name : include_iter->full_path;
 
                 // if we got an absolute file path for the current file,
                 // also use an absolute file path for the id

@@ -27,7 +27,7 @@ class cpp_entity_index;
 class parser
 {
 public:
-    parser(const parser&) = delete;
+    parser(const parser&)            = delete;
     parser& operator=(const parser&) = delete;
 
     virtual ~parser() noexcept = default;
@@ -38,9 +38,9 @@ public:
     /// index. \requires The dynamic type of `config` must match the required config type. \notes
     /// This function is thread safe.
     std::unique_ptr<cpp_file> parse(const cpp_entity_index& idx, std::string path,
-                                    const compile_config& config) const
+                                    bool parse_includes, const compile_config& config) const
     {
-        return do_parse(idx, std::move(path), config);
+        return do_parse(idx, std::move(path), parse_includes, config);
     }
 
     /// \returns Whether or not an error occurred during parsing.
@@ -81,6 +81,7 @@ private:
     /// \returns The [cppast::cpp_file]() object describing it.
     /// \requires The function must be thread safe.
     virtual std::unique_ptr<cpp_file> do_parse(const cpp_entity_index& idx, std::string path,
+                                               bool                  parse_includes,
                                                const compile_config& config) const = 0;
 
     type_safe::object_ref<const diagnostic_logger> logger_;
@@ -113,7 +114,7 @@ public:
     {
         parser_.logger().log("simple file parser", diagnostic{"parsing file '" + path + "'",
                                                               source_location(), severity::info});
-        auto file = parser_.parse(*idx_, std::move(path), c);
+        auto file = parser_.parse(*idx_, std::move(path), c.parse_includes(), c);
         auto ptr  = file.get();
         if (file)
             files_.push_back(std::move(file));
@@ -144,6 +145,7 @@ public:
     {
         return type_safe::ref(files_);
     }
+
 private:
     Parser                                        parser_;
     detail::intrusive_list<cpp_file>              files_;

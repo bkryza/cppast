@@ -37,7 +37,7 @@ namespace detail
     // visits a translation unit
     // notes: only visits if directly defined in file, not included
     template <typename Func>
-    void visit_tu(const cxtranslation_unit& tu, const char* path, Func f)
+    void visit_tu(const cxtranslation_unit& tu, const char* path, bool parse_includes, Func f)
     {
         auto in_tu = [&](const CXCursor& cur) {
             auto location = clang_getCursorLocation(cur);
@@ -50,7 +50,7 @@ namespace detail
         };
 
         visit_children(clang_getTranslationUnitCursor(tu.get()), [&](const CXCursor& cur) {
-            if (in_tu(cur))
+            if (parse_includes || in_tu(cur))
                 f(cur);
         });
     }

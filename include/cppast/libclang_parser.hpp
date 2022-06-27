@@ -113,7 +113,7 @@ public:
     /// path.
     libclang_compile_config(const libclang_compilation_database& database, const std::string& file);
 
-    libclang_compile_config(const libclang_compile_config& other) = default;
+    libclang_compile_config(const libclang_compile_config& other)            = default;
     libclang_compile_config& operator=(const libclang_compile_config& other) = default;
 
     /// \effects Sets the path to the location of the `clang++` binary and the version of that
@@ -154,6 +154,16 @@ public:
         remove_comments_in_macro_ = b;
     }
 
+    void parse_includes(bool pi) noexcept
+    {
+        parse_includes_ = pi;
+    }
+
+    bool parse_includes() const noexcept
+    {
+        return parse_includes_;
+    }
+
 private:
     void do_set_flags(cpp_standard standard, compile_flags flags) override;
 
@@ -174,6 +184,7 @@ private:
     bool        write_preprocessed_ : 1;
     bool        fast_preprocessing_ : 1;
     bool        remove_comments_in_macro_ : 1;
+    bool        parse_includes_ : 1;
 
     friend detail::libclang_compile_config_access;
 };
@@ -208,6 +219,7 @@ public:
 
 private:
     std::unique_ptr<cpp_file> do_parse(const cpp_entity_index& idx, std::string path,
+                                       bool                  parse_includes,
                                        const compile_config& config) const override;
 
     struct impl;
@@ -226,13 +238,15 @@ private:
 /// i.e. `FileParser::parser` must be an alias of [cppast::libclang_parser]().
 template <class FileParser, class Range>
 void parse_files(FileParser& parser, Range&& file_names,
-                 const libclang_compilation_database& database)
+                 const libclang_compilation_database& database,
+                 bool parse_includes = false)
 {
     static_assert(std::is_same<typename FileParser::parser, libclang_parser>::value,
                   "must use the libclang parser");
     parse_files(parser, std::forward<Range>(file_names), [&](const std::string& file) {
         auto config = find_config_for(database, file);
         config.value().remove_comments_in_macro(true);
+        config.value().parse_includes(parse_includes);
         if (!config)
             throw libclang_error("unable to find configuration for file '" + file + "'");
         return config.value();
